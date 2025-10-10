@@ -457,6 +457,10 @@ class FEBScrapper:
                     "valoracion": int(r["Valoración"]),
                 })
 
+        # Calcular partidos reales del equipo basándose en el máximo de partidos de los jugadores
+        # (esto incluye todas las fases: Liga Regular + Copa + Playoffs)
+        partidos_reales = max([j["partidos"] for j in jugadores], default=partidos_jugados)
+        
         equipo_data: Dict = {
             "nombre": nombre,
             "url_equipo": url_equipo,
@@ -464,7 +468,8 @@ class FEBScrapper:
             "informacion_general": {
                 "puntos_favor": puntos_favor,
                 "puntos_contra": puntos_contra,
-                "partidos_jugados": partidos_jugados,
+                "partidos_jugados": partidos_reales,  # Usar partidos reales calculados de jugadores
+                "partidos_jugados_liga_regular": partidos_jugados,  # Guardar original solo para referencia
                 "partidos_ganados": partidos_ganados,
                 "partidos_perdidos": partidos_perdidos,
                 "diferencia_puntos": puntos_favor - puntos_contra,

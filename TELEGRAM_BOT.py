@@ -350,12 +350,12 @@ async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
     max_generations = user_data.get("max_generations", get_default_max_generations())
     user_name = user_data.get("name", update.effective_user.first_name or f"Usuario {user_id}")
     
-    # Crear botones con bloqueo para "1º FEB"
+    # Crear botones con bloqueo para "1ª FEB"
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
-        if comp == "1º FEB":
+        if comp == "1ª FEB":
             # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} (Próximamente)", callback_data="locked_1feb")])
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
         else:
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
 
@@ -389,12 +389,12 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
         max_generations = get_default_max_generations()
         user_name = "Usuario"
     
-    # Crear botones con bloqueo para "1º FEB"
+    # Crear botones con bloqueo para "1ª FEB"
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
-        if comp == "1º FEB":
+        if comp == "1ª FEB":
             # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} (Próximamente)", callback_data="locked_1feb")])
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
         else:
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
 
@@ -545,7 +545,8 @@ async def locked_1feb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     """Handler para el botón bloqueado de 1º FEB"""
     query = update.callback_query
     await query.answer(
-        "🔒 Esta competición estará disponible próximamente. ¡Mantente atento!",
+        "🔒 Primera FEB no está disponible aún.\n\n"
+        "Esta competición estará habilitada próximamente. 🏀",
         show_alert=True
     )
     # No cambiar el estado, mantener en el mismo menú
@@ -1074,7 +1075,16 @@ def main():
     if not TELEGRAM_TOKEN:
         raise RuntimeError("Falta la variable de entorno TELEGRAM_TOKEN")
 
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    # Configurar timeouts más largos para operaciones que toman tiempo
+    app = (
+        ApplicationBuilder()
+        .token(TELEGRAM_TOKEN)
+        .read_timeout(300)      # 5 minutos para leer respuestas
+        .write_timeout(300)     # 5 minutos para enviar datos
+        .connect_timeout(30)    # 30 segundos para conectar
+        .pool_timeout(30)       # 30 segundos para obtener conexión del pool
+        .build()
+    )
 
     # Agregar manejador de errores
     app.add_error_handler(error_handler)

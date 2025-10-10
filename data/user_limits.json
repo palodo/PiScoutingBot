@@ -8,15 +8,15 @@
       "authorized": true,
       "admin": true,
       "max_generations": 30,
-      "remaining_generations": 27,
+      "remaining_generations": 26,
       "name": "Iván"
     },
     "2088798370": {
       "authorized": true,
       "admin": true,
-      "max_generations": 100,
-      "remaining_generations": 87,
-      "name": "Admin"
+      "max_generations": 50,
+      "remaining_generations": 48,
+      "name": "User 2088798370"
     },
     "1939509844": {
       "authorized": true,
