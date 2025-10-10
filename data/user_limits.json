@@ -1,0 +1,36 @@
+{
+  "config": {
+    "default_max_generations": 50,
+    "bot_password": "scouting2025"
+  },
+  "users": {
+    "644325494": {
+      "authorized": true,
+      "admin": true,
+      "max_generations": 30,
+      "remaining_generations": 27,
+      "name": "Iván"
+    },
+    "2088798370": {
+      "authorized": true,
+      "admin": true,
+      "max_generations": 100,
+      "remaining_generations": 87,
+      "name": "Admin"
+    },
+    "1939509844": {
+      "authorized": true,
+      "admin": false,
+      "max_generations": 50,
+      "remaining_generations": 50,
+      "name": "Usuario 1"
+    },
+    "8006986261": {
+      "authorized": true,
+      "admin": false,
+      "max_generations": 50,
+      "remaining_generations": 50,
+      "name": "Bobber Gey NIGGA"
+    }
+  }
+}
