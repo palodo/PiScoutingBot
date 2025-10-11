@@ -350,12 +350,15 @@ async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
     max_generations = user_data.get("max_generations", get_default_max_generations())
     user_name = user_data.get("name", update.effective_user.first_name or f"Usuario {user_id}")
     
-    # Crear botones con bloqueo para "1ª FEB"
+    # Crear botones con bloqueo para "1ª FEB" y "2ª FEB"
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
         if comp == "1ª FEB":
             # Botón bloqueado - no hace nada al presionarse
             teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
+        elif comp == "2ª FEB":
+            # Botón bloqueado - no hace nada al presionarse
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_2feb")])
         else:
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
 
@@ -389,12 +392,15 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
         max_generations = get_default_max_generations()
         user_name = "Usuario"
     
-    # Crear botones con bloqueo para "1ª FEB"
+    # Crear botones con bloqueo para "1ª FEB" y "2ª FEB"
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
         if comp == "1ª FEB":
             # Botón bloqueado - no hace nada al presionarse
             teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
+        elif comp == "2ª FEB":
+            # Botón bloqueado - no hace nada al presionarse
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_2feb")])
         else:
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
 
@@ -546,6 +552,18 @@ async def locked_1feb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer(
         "🔒 Primera FEB no está disponible aún.\n\n"
+        "Esta competición estará habilitada próximamente. 🏀",
+        show_alert=True
+    )
+    # No cambiar el estado, mantener en el mismo menú
+    return ELEGIR_COMPETICION
+
+
+async def locked_2feb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler para el botón bloqueado de 2º FEB"""
+    query = update.callback_query
+    await query.answer(
+        "🔒 Segunda FEB no está disponible aún.\n\n"
         "Esta competición estará habilitada próximamente. 🏀",
         show_alert=True
     )
@@ -1111,6 +1129,7 @@ def main():
             ELEGIR_COMPETICION: [
                 CallbackQueryHandler(elegir_competicion, pattern=r"^comp::"),
                 CallbackQueryHandler(locked_1feb_handler, pattern=r"^locked_1feb$"),
+                CallbackQueryHandler(locked_2feb_handler, pattern=r"^locked_2feb$"),
                 CallbackQueryHandler(restart, pattern=r"^restart$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, mensaje_no_permitido)
             ],

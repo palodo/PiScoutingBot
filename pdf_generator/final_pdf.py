@@ -497,7 +497,11 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
             
             # Formatear número en negrita
             if columna in ['FG%', 'FG3%', 'FT%', 'Win%']:
-                valor_texto = f"<b>{valor:.1f}%</b>"
+                # Si es 100.0%, mostrar como 100% sin decimal
+                if valor == 100.0:
+                    valor_texto = f"<b>{int(valor)}%</b>"
+                else:
+                    valor_texto = f"<b>{valor:.1f}%</b>"
             elif 'FG3A' in columna and 'PJ' in row.index:  # Para triples, mostrar intentos y porcentaje
                 intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
                 porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
@@ -774,7 +778,11 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
             
             # Formatear número en negrita
             if columna in ['FG%', 'FG3%', 'FT%', 'Win%']:
-                valor_texto = f"<b>{valor:.1f}%</b>"
+                # Si es 100.0%, mostrar como 100% sin decimal
+                if valor == 100.0:
+                    valor_texto = f"<b>{int(valor)}%</b>"
+                else:
+                    valor_texto = f"<b>{valor:.1f}%</b>"
             elif 'FG3A' in columna and 'PJ' in row.index:  # Para triples, mostrar intentos y porcentaje
                 intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
                 porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
@@ -1547,8 +1555,11 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             ('RIGHTPADDING', (0, 0), (-1, -1), 8),
         ]))
         
+        # Formatear porcentaje de victoria: sin decimal si es 100.0%
+        win_percentage_texto = f"{int(win_percentage)}%" if win_percentage == 100.0 else f"{win_percentage:.1f}%"
+        
         cuadro3_data = [
-            [Paragraph(f"{win_percentage}%", numero_porcentaje_landscape_style)],
+            [Paragraph(win_percentage_texto, numero_porcentaje_landscape_style)],
             [Paragraph("% DE<br/>VICTORIA", etiqueta_caja_landscape_style)]
         ]
         cuadro3 = Table(cuadro3_data, colWidths=[2*inch], rowHeights=[1*inch, 0.8*inch])
@@ -2354,8 +2365,10 @@ def generar_resumen_jugadores_con_openai(df_jugadores):
 
         json_prompt = df_to_player_json(df_jugadores)
         # Crear el prompt para OpenAI
-
-        with open("prompt_scouting.txt", "r", encoding="utf-8") as f:
+        
+        # Obtener la ruta del archivo prompt_scouting.txt en el mismo directorio que este módulo
+        prompt_path = Path(__file__).parent / "prompt_scouting.txt"
+        with open(prompt_path, "r", encoding="utf-8") as f:
             prompt = f.read()
 
         # Realizar la llamada a OpenAI
@@ -2702,11 +2715,15 @@ def crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, 
         # Obtener datos del jugador
         nombre = jugador_data['Jugador']
         foto_path = jugador_data.get('foto_path', '')
+        partidos_jugados = int(jugador_data.get('PJ', 0))
         
         # Buscar número de camiseta usando la nueva función
         numero = buscar_numero_jugador(jugador_data, numeros_jugadores)
         if numero:
             nombre = f"<b>#{numero}</b> {nombre}"
+        
+        # Agregar partidos jugados al nombre en color blanco
+        nombre = f"{nombre} <font size='8' color='white'>({partidos_jugados} partidos jugados)</font>"
         
         # Calcular estadísticas por partido
         minutos_totales = jugador_data['MIN'] / jugador_data['PJ'] / 60  # Minutos por partido
