@@ -1,0 +1,63 @@
+PASO A PASO - DESPLIEGUE EN DIGITALOCEAN
+==========================================
+
+1. CREAR DROPLET
+   - Ve a: https://cloud.digitalocean.com/droplets/new
+   - Imagen: Ubuntu 22.04 LTS
+   - Plan: Basic $6/mes (1GB RAM)
+   - Región: Frankfurt (más cercana a España)
+   - Autenticación: Elige SSH key o Password
+   - Nombre: pi-scouting-bot
+   - Click "Create Droplet"
+   - ANOTA LA IP QUE TE DAN
+
+2. PREPARAR DROPLET (una sola vez)
+   Conecta por SSH:
+   
+   ssh root@TU_IP_AQUI
+   
+   Ejecuta estos comandos:
+   
+   curl -fsSL https://get.docker.com -o get-docker.sh
+   sudo sh get-docker.sh
+   sudo apt-get install -y docker-compose-plugin
+   mkdir -p ~/pi-scouting-bot
+   cd ~/pi-scouting-bot
+   mkdir -p logs data reportes imagenes
+   exit
+
+3. SUBIR ARCHIVOS DESDE WINDOWS
+   Abre PowerShell en C:\Users\Pablo\Desktop\deploy y ejecuta:
+   
+   .\upload_to_digitalocean.ps1
+   
+   (Te pedirá la IP del droplet)
+
+4. INICIAR EL BOT
+   Conecta al droplet:
+   
+   ssh root@TU_IP_AQUI
+   cd ~/pi-scouting-bot
+   chmod +x start_bot.sh
+   ./start_bot.sh
+
+5. VERIFICAR QUE FUNCIONA
+   
+   docker logs -f pi-scouting-bot
+   
+   Deberías ver logs del bot iniciándose
+   Press Ctrl+C para salir de los logs
+
+6. PROBAR EL BOT
+   Abre Telegram y envía /start al bot
+   Debería responder normalmente
+
+LISTO! El bot está corriendo 24/7 en DigitalOcean
+
+COMANDOS ÚTILES:
+- Ver logs: docker logs -f pi-scouting-bot
+- Reiniciar: docker-compose restart
+- Detener: docker-compose down
+- Ver estado: docker ps
+
+COSTO: $6/mes

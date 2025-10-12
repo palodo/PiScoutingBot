@@ -1,0 +1,20 @@
+# TROUBLESHOOTING - Contenedor no inicia
+
+Ejecuta estos comandos en el servidor para diagnosticar:
+
+# 1. Ver todos los contenedores (incluidos los detenidos)
+docker ps -a
+
+# 2. Ver logs del último intento
+docker logs pi-scouting-bot
+
+# 3. Ver qué falló en docker-compose
+docker-compose logs
+
+# 4. Verificar que la imagen se cargó
+docker images | grep deploy-scouting-bot
+
+# 5. Intentar iniciar manualmente con logs
+docker-compose up
+
+# Si hay error, envíame la salida de estos comandos

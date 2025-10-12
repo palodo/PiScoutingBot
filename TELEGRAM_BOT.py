@@ -3,6 +3,10 @@ import json
 import asyncio
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 # Configurar matplotlib para modo headless ANTES de cualquier importación
 import matplotlib
@@ -34,10 +38,8 @@ DATA_PATH = BASE_DIR / "data" / "datos_historicos.json"  # Archivo multi-tempora
 USER_LIMITS_PATH = BASE_DIR / "data" / "user_limits.json"  # Archivo para guardar contadores
 TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
-# Lee el token desde variable de entorno (recomendado)
-TELEGRAM_TOKEN = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
-#387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
-#
+# Lee el token desde variable de entorno
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 # ==========================
 # SISTEMA DE COLA PARA PETICIONES (CON LOCK)

@@ -1,0 +1,43 @@
+# Instrucciones rápidas para desplegar
+
+## Archivos generados:
+- `pi-scouting-bot-image.tar.zip` (205 MB) - Imagen Docker
+- `pi-scouting-bot-data.zip` (4 MB) - Datos
+- `docker-compose.yml` - Configuración
+- `.env` - Variables de entorno
+
+## En el servidor Linux:
+
+1. Subir archivos:
+```bash
+# Usando SCP desde Windows:
+scp pi-scouting-bot-image.tar.zip usuario@servidor:/home/usuario/
+scp pi-scouting-bot-data.zip usuario@servidor:/home/usuario/
+scp docker-compose.yml usuario@servidor:/home/usuario/
+scp .env usuario@servidor:/home/usuario/
+```
+
+2. En el servidor:
+```bash
+# Descomprimir imagen
+unzip pi-scouting-bot-image.tar.zip
+docker load -i pi-scouting-bot-image.tar
+
+# Descomprimir datos
+unzip pi-scouting-bot-data.zip
+
+# Crear directorios
+mkdir -p logs reportes
+
+# Iniciar
+docker-compose up -d
+
+# Ver logs
+docker logs -f pi-scouting-bot
+```
+
+## Verificación:
+```bash
+docker ps  # Debe aparecer pi-scouting-bot corriendo
+docker exec pi-scouting-bot ps aux | grep cron  # Verificar cron activo
+```

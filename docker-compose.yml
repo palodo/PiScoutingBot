@@ -1,0 +1,15 @@
+services:
+  scouting-bot:
+    image: deploy-scouting-bot:latest
+    container_name: pi-scouting-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./reportes:/app/reportes
+      - ./imagenes:/app/imagenes
+    environment:
+      - TZ=Europe/Madrid
+    command: /app/entrypoint.sh
