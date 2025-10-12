@@ -146,6 +146,403 @@ def eliminar_paginas_en_blanco_pdf(input_pdf_path: str, output_pdf_path: str = N
         return input_pdf_path
 
 
+def obtener_ultimos_partidos_equipo(nombre_equipo: str, liga: str = None, csv_path: str = None, num_partidos: int = 3) -> List[Dict[str, str]]:
+    """
+    Obtiene los últimos partidos jugados de un equipo específico filtrado por liga.
+    
+    Args:
+        nombre_equipo: Nombre exacto del equipo
+        liga: Liga del equipo (ej: "1ª FEB", "2ª FEB", "3ª FEB")
+        csv_path: Ruta al archivo CSV (opcional, usa ruta por defecto si no se especifica)
+        num_partidos: Número de partidos a obtener (por defecto 3)
+        
+    Returns:
+        Lista de diccionarios con información de los partidos:
+        [
+            {
+                'fecha': 'dd/mm/yyyy',
+                'resultado': 'XX-YY',
+                'estado': 'W' o 'L',
+                'oponente': 'Nombre del equipo rival',
+                'enlace': 'URL del partido'
+            }
+        ]
+    """
+    from datetime import datetime
+    import re
+    
+    # Usar ruta por defecto si no se especifica
+    if csv_path is None:
+        csv_path = "data/datos_completos.csv"
+    
+    # Mapper de liga a número en source_url
+    liga_mapper = {
+        "1ª FEB": "1",
+        "2ª FEB": "2", 
+        "3ª FEB": "3"
+    }
+    
+    try:
+        # Cargar el CSV
+        df = pd.read_csv(csv_path)
+        
+        # Filtrar partidos donde el equipo participa (como local o visitante)
+        partidos_equipo = df[
+            ((df['local'] == nombre_equipo) | (df['visitante'] == nombre_equipo)) &
+            (df['resultado'].notna()) &  # Solo partidos con resultado
+            (df['resultado'] != '') &    # Resultado no vacío
+            (df['resultado'].str.strip() != '')  # Resultado no solo espacios
+        ].copy()
+        
+        if partidos_equipo.empty:
+            print(f"⚠️ No se encontraron partidos jugados para el equipo: {nombre_equipo}")
+            return []
+        
+        # Filtrar por liga si se especifica
+        if liga and liga in liga_mapper:
+            liga_numero = liga_mapper[liga]
+            print(f"🔍 Filtrando por liga: {liga} (número {liga_numero})")
+            
+            # Extraer número de liga desde source_url usando regex
+            # Formato esperado: https://baloncestoenvivo.feb.es/calendario/tercerafeb/X/2025
+            def extract_liga_number(source_url):
+                if pd.isna(source_url):
+                    return None
+                try:
+                    # Buscar patrón: /calendario/tercerafeb/X/YYYY donde X es el número de liga
+                    match = re.search(r'/calendario/tercerafeb/(\d+)/', str(source_url))
+                    if match:
+                        return match.group(1)
+                    return None
+                except:
+                    return None
+            
+            # Aplicar extracción de número de liga
+            partidos_equipo['liga_numero'] = partidos_equipo['source_url'].apply(extract_liga_number)
+            
+            # Filtrar por el número de liga correspondiente
+            partidos_liga = partidos_equipo[partidos_equipo['liga_numero'] == liga_numero]
+            
+            if partidos_liga.empty:
+                print(f"⚠️ No se encontraron partidos para {nombre_equipo} en {liga}")
+                return []
+            
+            print(f"✅ Encontrados {len(partidos_liga)} partidos de {nombre_equipo} en {liga}")
+            partidos_equipo = partidos_liga
+        
+        # Convertir fechas al formato datetime para ordenar
+        partidos_equipo['fecha_dt'] = pd.to_datetime(partidos_equipo['fecha'], format='%d/%m/%Y', errors='coerce')
+        
+        # Filtrar solo fechas válidas y anteriores a hoy
+        hoy = datetime.now()
+        partidos_equipo = partidos_equipo[
+            (partidos_equipo['fecha_dt'].notna()) &
+            (partidos_equipo['fecha_dt'] <= hoy)
+        ]
+        
+        # Ordenar por fecha descendente (más reciente primero)
+        partidos_equipo = partidos_equipo.sort_values('fecha_dt', ascending=False)
+        
+        # Tomar solo los últimos N partidos
+        ultimos_partidos = partidos_equipo.head(num_partidos)
+        
+        resultados = []
+        
+        for _, partido in ultimos_partidos.iterrows():
+            # Determinar si es local o visitante
+            es_local = partido['local'] == nombre_equipo
+            oponente = partido['visitante'] if es_local else partido['local']
+            
+            # Extraer resultado y determinar W/L
+            resultado = partido['resultado'].strip()
+            try:
+                # Formato esperado: "XX-YY"
+                puntos_local, puntos_visitante = map(int, resultado.split('-'))
+                
+                if es_local:
+                    estado = 'W' if puntos_local > puntos_visitante else 'L'
+                else:
+                    estado = 'W' if puntos_visitante > puntos_local else 'L'
+            except (ValueError, AttributeError):
+                estado = '?'  # No se pudo determinar
+            
+            # Crear entrada del resultado
+            resultado_partido = {
+                'fecha': partido['fecha'],
+                'resultado': resultado,
+                'estado': estado,
+                'oponente': oponente,
+                'enlace': partido.get('partido_url', '')
+            }
+            
+            resultados.append(resultado_partido)
+        
+        print(f"✅ Se encontraron {len(resultados)} partidos recientes para {nombre_equipo} en {liga if liga else 'todas las ligas'}")
+        return resultados
+        
+    except Exception as e:
+        print(f"❌ Error obteniendo partidos del equipo {nombre_equipo}: {e}")
+        return []
+
+
+def crear_pagina_ultimos_partidos(nombre_equipo: str, liga: str = None, csv_path: str = None) -> List:
+    """
+    Crea una página con los últimos 3 partidos del equipo rival filtrados por liga.
+    
+    Args:
+        nombre_equipo: Nombre del equipo
+        liga: Liga del equipo (ej: "1ª FEB", "2ª FEB", "3ª FEB")
+        csv_path: Ruta al archivo CSV (opcional)
+        
+    Returns:
+        Lista de elementos para añadir al story del PDF
+    """
+    from reportlab.lib.pagesizes import A4
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch, cm
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    
+    # Obtener los últimos partidos filtrados por liga
+    partidos = obtener_ultimos_partidos_equipo(nombre_equipo, liga, csv_path, num_partidos=5)
+    
+    # Estilos
+    styles = getSampleStyleSheet()
+    
+    # Estilo para el título de la página
+    titulo_partidos_style = ParagraphStyle(
+        'TituloPartidos',
+        parent=styles['Heading1'],
+        fontSize=32,
+        textColor=colors.HexColor('#1a365d'),
+        alignment=TA_CENTER,
+        spaceAfter=30,
+        fontName='Helvetica-Bold',
+        leading=36
+    )
+    
+    # Estilo para subtítulo
+    subtitulo_partidos_style = ParagraphStyle(
+        'SubtituloPartidos',
+        parent=styles['Heading2'],
+        fontSize=18,
+        textColor=colors.HexColor('#2d3748'),
+        alignment=TA_CENTER,
+        spaceAfter=25,
+        fontName='Helvetica-Bold',
+    )
+    
+    # Estilo para fecha
+    fecha_style = ParagraphStyle(
+        'FechaPartido',
+        parent=styles['Normal'],
+        fontSize=16,
+        textColor=colors.HexColor('#4a5568'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=5
+    )
+    
+    # Estilo para resultado
+    resultado_style = ParagraphStyle(
+        'ResultadoPartido',
+        parent=styles['Normal'],
+        fontSize=24,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=3
+    )
+    
+    # Estilo para estado (W/L)
+    estado_win_style = ParagraphStyle(
+        'EstadoWin',
+        parent=styles['Normal'],
+        fontSize=20,
+        textColor=colors.HexColor('#38a169'),  # Verde para W
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=5
+    )
+    
+    estado_loss_style = ParagraphStyle(
+        'EstadoLoss',
+        parent=styles['Normal'],
+        fontSize=20,
+        textColor=colors.HexColor('#e53e3e'),  # Rojo para L
+        alignment=TA_CENTER,
+        fontName='Helvetica-Bold',
+        spaceAfter=5
+    )
+    
+    # Estilo para oponente
+    oponente_style = ParagraphStyle(
+        'OponentePartido',
+        parent=styles['Normal'],
+        fontSize=14,
+        textColor=colors.HexColor('#2d3748'),
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        spaceAfter=8
+    )
+    
+    # Estilo para enlace
+    enlace_style = ParagraphStyle(
+        'EnlacePartido',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#3182ce'),
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        leftIndent=10,
+        rightIndent=10
+    )
+    
+    # Elementos de la página
+    elementos = []
+    
+    # Spacer inicial
+    elementos.append(Spacer(1, 0.5*inch))
+    
+    # Título principal
+    titulo = Paragraph(f"ÚLTIMOS PARTIDOS", titulo_partidos_style)
+    elementos.append(titulo)
+    
+    if not partidos:
+        # Mensaje si no hay partidos
+        sin_datos_style = ParagraphStyle(
+            'SinDatos',
+            parent=styles['Normal'],
+            fontSize=18,
+            textColor=colors.HexColor('#e53e3e'),
+            alignment=TA_CENTER,
+            fontName='Helvetica-Bold',
+        )
+        mensaje = Paragraph("⚠️ No se encontraron partidos recientes con resultado", sin_datos_style)
+        elementos.append(Spacer(1, 1*inch))
+        elementos.append(mensaje)
+        return elementos
+    
+    # Crear tabla con los partidos
+    tabla_data = []
+    
+    # Encabezados
+    headers = ["Fecha", "Resultado", "Estado", "Oponente", "Link"]
+    tabla_data.append(headers)
+    
+    # Datos de partidos
+    for partido in partidos:
+        # Crear Paragraph con enlace para la columna de enlace
+        if partido['enlace']:
+            # Crear un Paragraph con enlace clickeable usando ReportLab
+            enlace_paragraph = Paragraph(
+                f'<a href="{partido["enlace"]}" color="#3182ce"><u>View</u></a>',
+                enlace_style
+            )
+        else:
+            enlace_paragraph = Paragraph("N/A", enlace_style)
+        
+        fila = [
+            partido['fecha'],
+            partido['resultado'],
+            partido['estado'],
+            partido['oponente'],
+            enlace_paragraph  # Usar Paragraph en lugar de string
+        ]
+        tabla_data.append(fila)
+    
+    # Si no hay 5 partidos, añadir filas para partidos no jugados
+    partidos_faltantes = 5 - len(partidos)
+    if partidos_faltantes > 0:
+        for i in range(partidos_faltantes):
+            fila_vacia = [
+                "Próximamente",
+                "-",
+                "-",
+                "Pendiente",
+                Paragraph("N/A", enlace_style)
+            ]
+            tabla_data.append(fila_vacia)
+    
+    # Crear tabla
+    tabla = Table(tabla_data, colWidths=[1.5*inch, 1.5*inch, 1*inch, 4.5*inch, 1*inch])
+    
+    # Estilos de la tabla - TODO CENTRADO
+    tabla_estilos = [
+        # Estilo general - TODO CENTRADO
+        ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 0), (-1, -1), 12),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),  # TODO centrado
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # TODO centrado verticalmente
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),
+        
+        # Encabezados
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a5568')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 14),
+        
+        # Celdas de datos
+        ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+        ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+        ('FONTSIZE', (0, 1), (-1, -1), 12),
+        
+        # Columna de estado (W/L)
+        ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
+        ('FONTSIZE', (2, 1), (2, -1), 16),
+        
+        # Padding - aumentado para mejor centrado
+        ('TOPPADDING', (0, 0), (-1, -1), 15),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]
+    
+    # Añadir colores específicos para W/L solo para partidos reales
+    for i, partido in enumerate(partidos, 1):
+        if partido['estado'] == 'W':
+            tabla_estilos.append(('TEXTCOLOR', (2, i), (2, i), colors.HexColor('#38a169')))
+        elif partido['estado'] == 'L':
+            tabla_estilos.append(('TEXTCOLOR', (2, i), (2, i), colors.HexColor('#e53e3e')))
+    
+    # Estilo especial para filas de partidos pendientes (más tenue)
+    if partidos_faltantes > 0:
+        for i in range(len(partidos) + 1, len(partidos) + partidos_faltantes + 1):
+            tabla_estilos.append(('TEXTCOLOR', (0, i), (-1, i), colors.HexColor('#9ca3af')))  # Gris más tenue
+            tabla_estilos.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor('#f9fafb')))  # Fondo gris muy claro
+    
+    tabla.setStyle(TableStyle(tabla_estilos))
+    
+    # Añadir espaciador y tabla
+    elementos.append(Spacer(1, 0.5*inch))
+    elementos.append(tabla)
+    
+    # Spacer final
+    elementos.append(Spacer(1, 0.5*inch))
+    
+    # Nota informativa
+    nota_style = ParagraphStyle(
+        'NotaPartidos',
+        parent=styles['Normal'],
+        fontSize=10,
+        textColor=colors.HexColor('#718096'),
+        alignment=TA_CENTER,
+        fontName='Helvetica-Oblique',
+        leftIndent=50,
+        rightIndent=50
+    )
+    
+    nota = Paragraph(
+        "💡 Esta información muestra los últimos 5 partidos jugados por el equipo rival, "
+        "ordenados desde el más reciente al más antiguo. Estado: W = Victoria, L = Derrota.",
+        nota_style
+    )
+    elementos.append(nota)
+    
+    return elementos
+
+
 def obtener_numeros_jugadores_equipo(equipo_url: str, df_resultados: pd.DataFrame = None) -> Dict[str, Dict[str, str]]:
     """
     Obtiene los números de camiseta de los jugadores de un equipo usando los shot charts.
@@ -1277,7 +1674,7 @@ def crear_pagina_rankings(story, rankings, styles, equipo_url=None, df_resultado
             story.append(explicacion_ts)
 
 
-def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo, rankings, df_grupo=None, rankings_equipos=None, filename=None, equipo_url=None, df_resultados=None, JSON_PATH=None, temporada="2025"):
+def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo, rankings, df_grupo=None, rankings_equipos=None, filename=None, equipo_url=None, df_resultados=None, JSON_PATH=None, temporada="2025", liga=None):
     """
     Genera un PDF completo del informe del equipo con diseño atractivo.
     Retorna una lista de elementos para ser añadidos al story principal.
@@ -1295,6 +1692,7 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         df_resultados: DataFrame con resultados para shot charts
         JSON_PATH: Path al archivo JSON de datos (para historial de jugadores)
         temporada: Temporada actual (para buscar historial en temporadas anteriores)
+        liga: Liga del equipo (para filtrar partidos por liga en la página de últimos partidos)
     """
     from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image, Table, TableStyle, PageBreak, BaseDocTemplate, Frame, PageTemplate
@@ -1410,7 +1808,8 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         # === LOGO DEL EQUIPO EN EL CENTRO ===
         if logo_equipo_path:
             try:
-                logo_equipo = Image(logo_equipo_path, width=3*inch, height=3*inch, kind='proportional')  # Más grande
+                # Usar dimensiones moderadas para buen balance entre tamaño y layout
+                logo_equipo = Image(logo_equipo_path, width=2.8*inch, height=2.3*inch, kind='proportional')
             except:
                 logo_equipo = Paragraph("🏀", ParagraphStyle('EmojiEquipo', fontSize=96, alignment=TA_CENTER))  # Emoji más grande
         else:
@@ -1472,7 +1871,7 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         logos_horizontales_data = [[logo_pi_izq, espaciador, logo_equipo, espaciador, logo_pi_der]]
         logos_horizontales = Table(logos_horizontales_data, 
                                   colWidths=[1.5*inch, 0.5*inch, 3*inch, 0.5*inch, 1.5*inch],
-                                  rowHeights=[2.5*inch])
+                                  rowHeights=[2.4*inch])  # Altura ligeramente aumentada para logo moderado
         logos_horizontales.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -1600,7 +1999,7 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         
         portada_table = Table(portada_data, 
                              colWidths=[3.5*inch, 3.5*inch, 3.5*inch],  # Más anchos para landscape
-                             rowHeights=[1*inch, 0.4*inch, 2.5*inch, 0.4*inch, 0.5*inch, 2*inch])  # Más espacio para el logo
+                             rowHeights=[1*inch, 0.4*inch, 2.4*inch, 0.4*inch, 0.5*inch, 2*inch])  # Altura moderada para logo
         
         portada_table.setStyle(TableStyle([
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -1630,6 +2029,15 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     
     # Variable necesaria para el resto del código
     nombre_equipo = equipo_data['Equipo']
+    
+    # === PÁGINA 2: ÚLTIMOS PARTIDOS DEL EQUIPO RIVAL ===
+    # Salto de página para la nueva página de últimos partidos
+    story.append(NextPageTemplate('landscape'))
+    story.append(PageBreak())
+    
+    # Añadir página de últimos partidos
+    elementos_partidos = crear_pagina_ultimos_partidos(nombre_equipo, liga=liga, csv_path="data/datos_completos.csv")
+    story.extend(elementos_partidos)
     
     # Salto de página para continuar con más contenido y mantener landscape
     story.append(NextPageTemplate('landscape'))
@@ -2482,24 +2890,30 @@ def generar_resumen_jugadores_con_openai(df_jugadores):
 def crear_fila_historial_jugador(jugador_data, historial):
     """
     Crea una fila ultra-compacta con el historial de un jugador.
-    Retorna una tupla: (lista de datos, color de fondo según evolución de valoración)
+    Retorna una tupla: (lista de datos, color de fondo según evolución de valoración, evol_val)
     """
     from reportlab.lib import colors
+    from reportlab.platypus import Paragraph
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
     
     nombre_jugador = jugador_data.get('Jugador', 'Jugador')
     
     if not historial:
-        return None, colors.white
+        return None, colors.white, 0.0
     
     # Obtener la temporada más reciente
     year = sorted(historial.keys(), reverse=True)[0]
     datos_year = historial[year]
     jugador_hist = datos_year["jugador"]
     
+    # Extraer enlace del jugador desde el JSON
+    enlace_jugador = jugador_hist.get("enlace", "")
+    
     # Calcular estadísticas por partido
     pj = jugador_hist.get("partidos", 0)
     if pj == 0:
-        return None, colors.white
+        return None, colors.white, 0.0
     
     pts_pj = round(jugador_hist.get("puntos", 0) / pj, 1)
     reb_pj = round(jugador_hist.get("rebotes_totales", 0) / pj, 1)
@@ -2512,18 +2926,24 @@ def crear_fila_historial_jugador(jugador_data, historial):
     ast_actual = jugador_data.get('AST/PJ', 0)
     val_actual = jugador_data.get('VAL/PJ', 0)
     
-    # Calcular evolución de VALORACIÓN (clave para el color)
+    # Calcular evolución total (suma de todas las mejoras individuales)
+    evol_pts = round(pts_actual - pts_pj, 1)
+    evol_reb = round(reb_actual - reb_pj, 1)
+    evol_ast = round(ast_actual - ast_pj, 1)
     evol_val = round(val_actual - val_pj, 1)
     
-    # Determinar color de fondo según evolución de valoración
+    # Mejora total = suma de todas las evoluciones
+    mejora_total = round(evol_pts + evol_reb + evol_ast + evol_val, 1)
+    
+    # Determinar color de fondo según evolución de VALORACIÓN únicamente
     if evol_val >= 3:
-        # Mejora de 3 o más → VERDE
+        # Mejora de valoración de 3 o más → VERDE
         bg_color = colors.HexColor('#d1fae5')  # Verde claro
     elif evol_val <= -3:
-        # Empeora de 3 o más → ROJO
+        # Empeora valoración de 3 o más → ROJO
         bg_color = colors.HexColor('#fee2e2')  # Rojo claro
     else:
-        # Sin cambio significativo → Blanco
+        # Sin cambio significativo en valoración → Blanco
         bg_color = colors.white
     
     # Formatear datos aprovechando TODO el espacio disponible
@@ -2535,15 +2955,60 @@ def crear_fila_historial_jugador(jugador_data, historial):
     # Obtener competición desde la clave 'categoria' (1º FEB, 2º FEB, T3A, etc.)
     competicion = datos_year.get('categoria', 'N/A')
     
+    # Crear nombre clickeable si hay enlace
+    nombre_style = ParagraphStyle(
+        'NombreJugadorHistorial',
+        fontSize=9,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        fontName='Helvetica'
+    )
+    
+    if enlace_jugador:
+        # Acortar nombre si es muy largo
+        nombre_mostrar = nombre_jugador[:35] + "..." if len(nombre_jugador) > 35 else nombre_jugador
+        nombre_clickeable = Paragraph(
+            f'<a href="{enlace_jugador}" color="#3182ce"><u>{nombre_mostrar}</u></a>',
+            nombre_style
+        )
+    else:
+        # Sin enlace, solo texto normal
+        nombre_mostrar = nombre_jugador[:35] + "..." if len(nombre_jugador) > 35 else nombre_jugador
+        nombre_clickeable = Paragraph(nombre_mostrar, nombre_style)
+    
+    # Crear celdas compactas con valor anterior y cambio (formato HTML para colores)
+    def crear_celda_estadistica(valor_anterior, cambio):
+        if cambio > 0:
+            cambio_html = f'<font color="#38a169"><b>+{cambio:.1f}</b></font>'
+        elif cambio < 0:
+            cambio_html = f'<font color="#e53e3e"><b>{cambio:.1f}</b></font>'
+        else:
+            cambio_html = '<b>0</b>'
+        return f"{valor_anterior}<br/>{cambio_html}"
+    
+    # Crear celdas usando Paragraph para soportar HTML
+    celda_style = ParagraphStyle(
+        'CeldaEstadistica',
+        fontSize=9,
+        textColor=colors.black,
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        leading=11
+    )
+    
+    pts_celda = Paragraph(crear_celda_estadistica(pts_pj, evol_pts), celda_style)
+    reb_celda = Paragraph(crear_celda_estadistica(reb_pj, evol_reb), celda_style)
+    ast_celda = Paragraph(crear_celda_estadistica(ast_pj, evol_ast), celda_style)
+    val_celda = Paragraph(crear_celda_estadistica(val_pj, evol_val), celda_style)
+
     return [
-        nombre_jugador[:40],  # Aprovechar columna de 60mm (antes era 20, ahora 40 caracteres)
+        nombre_clickeable,  # Nombre clickeable como Paragraph
         f"{competicion}\n{equipo_anterior}",  # Mostrar competición en vez del año
-        f"{pts_pj}",
-        f"{reb_pj}",
-        f"{ast_pj}",
-        f"{val_pj}",
-        f"{evol_val:+.1f}" if evol_val != 0 else "0"  # Formato +X.X o -X.X
-    ], bg_color
+        pts_celda,          # PTS: anterior + cambio con colores
+        reb_celda,          # REB: anterior + cambio con colores
+        ast_celda,          # AST: anterior + cambio con colores
+        val_celda           # VAL: anterior + cambio con colores
+    ], bg_color, evol_val  # Retornamos evol_val para ordenamiento
 
 
 def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
@@ -2560,7 +3025,7 @@ def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
     from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle, NextPageTemplate
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib import colors
-    from reportlab.lib.units import mm
+    from reportlab.lib.units import mm, inch
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
     
     if not jugadores_list:
@@ -2570,22 +3035,45 @@ def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
     story.append(NextPageTemplate('landscape'))
     story.append(PageBreak())
     
-    # Título compacto
-    titulo = Paragraph("📊 ESTADÍSTICAS INDIVIDUALES TEMPORADA PASADA", titulo_style)
-    story.append(titulo)
-    story.append(Spacer(1, 3*mm))
+    # Título con el mismo estilo que otras páginas
+    titulo_temporada_style = ParagraphStyle(
+        'TituloTemporada',
+        parent=titulo_style,
+        fontSize=20,
+        textColor=colors.HexColor('#2d3748'),
+        alignment=TA_CENTER,
+        spaceAfter=15,
+        fontName='Helvetica-Bold',
+    )
     
-    # Crear tabla de datos ultra-compacta
-    header = ['JUGADOR', 'COMPETICIÓN\nEQUIPO', 'PTS/PJ\n(ANT)', 'REB/PJ\n(ANT)', 'AST/PJ\n(ANT)', 'VAL/PJ\n(ANT)', 'EVOLUCIÓN\nVAL']
+    titulo = Paragraph("ESTADÍSTICAS INDIVIDUALES TEMPORADA PASADA", titulo_temporada_style)
+    story.append(titulo)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # Crear tabla de datos ultra-compacta - SIN MEJORA TOTAL
+    header = ['JUGADOR', 'COMPETICIÓN\nEQUIPO', 'PTS/PJ', 'REB/PJ', 'AST/PJ', 'VAL/PJ']
     table_data = [header]
     row_colors = []  # Para almacenar colores de fondo por fila
     
-    # Añadir TODAS las filas de jugadores
+    # Crear lista temporal para ordenar por cambio total
+    jugadores_con_cambio = []
+    
     for jugador_data, historial in jugadores_list:
-        fila_data, bg_color = crear_fila_historial_jugador(jugador_data, historial)
-        if fila_data:
-            table_data.append(fila_data)
-            row_colors.append(bg_color)
+        resultado = crear_fila_historial_jugador(jugador_data, historial)
+        if resultado[0]:  # Si hay datos válidos
+            fila_data, bg_color, evol_val = resultado
+            jugadores_con_cambio.append((abs(evol_val), evol_val, fila_data, bg_color))
+    
+    # Ordenar por valor absoluto del cambio (de mayor a menor)
+    jugadores_con_cambio.sort(key=lambda x: x[0], reverse=True)
+    
+    # Tomar solo los primeros 9 jugadores
+    jugadores_top = jugadores_con_cambio[:9]
+    
+    # Añadir las filas ordenadas a la tabla
+    for _, _, fila_data, bg_color in jugadores_top:
+        table_data.append(fila_data)
+        row_colors.append(bg_color)
     
     if len(table_data) == 1:  # Solo header
         story.append(Paragraph("No hay datos históricos disponibles", styles['Normal']))
@@ -2593,45 +3081,45 @@ def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
     
     # Calcular anchos de columna para usar TODO el ancho disponible
     # Total disponible en landscape A4: ~280mm (con márgenes de 10mm a cada lado)
-    # Distribución proporcional para evitar truncamientos
-    col_widths = [60*mm, 40*mm, 30*mm, 30*mm, 30*mm, 30*mm, 35*mm]  # Total: 255mm
+    # 6 columnas: Jugador, Equipo (MUCHO MÁS ANCHO), métricas más estrechas
+    col_widths = [60*mm, 70*mm, 25*mm, 25*mm, 25*mm, 30*mm]  # Total: 230mm
     
     hist_table = Table(table_data, colWidths=col_widths)
     
     # Estilos base de la tabla
     table_style = [
-        # Header
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1e3a8a')),
+        # Header - Mismo estilo que otras páginas
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a5568')),  # Gris consistente
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 7),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),  # Tamaño más grande
         ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
         ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
         
-        # Datos
+        # Datos - Estilo mejorado
         ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 7),
-        ('ALIGN', (0, 1), (0, -1), 'LEFT'),  # Nombre a la izquierda
-        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),  # Resto centrado
+        ('FONTSIZE', (0, 1), (-1, -1), 9),  # Tamaño más grande
+        ('ALIGN', (0, 1), (0, -1), 'CENTER'),  # Todo centrado como otras páginas
+        ('ALIGN', (1, 1), (-1, -1), 'CENTER'),  # Todo centrado
         ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
         
-        # Bordes
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        # Bordes - Estilo consistente
+        ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#e2e8f0')),  # Mismo color que otras tablas
         
-        # Padding ultra-compacto
-        ('TOPPADDING', (0, 0), (-1, -1), 2),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ('LEFTPADDING', (0, 0), (-1, -1), 2),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 2),
+        # Padding mejorado
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]
     
-    # Añadir colores de fondo por fila según evolución
+    # Añadir colores de fondo por fila según evolución de valoración
     for idx, bg_color in enumerate(row_colors, start=1):
         table_style.append(('BACKGROUND', (0, idx), (-1, idx), bg_color))
         
-        # Si es verde o rojo, poner texto en negrita
+        # Si es verde o rojo, destacar la columna VAL/PJ (columna 5)
         if bg_color != colors.white:
-            table_style.append(('FONTNAME', (6, idx), (6, idx), 'Helvetica-Bold'))
+            table_style.append(('FONTNAME', (5, idx), (5, idx), 'Helvetica-Bold'))
     
     hist_table.setStyle(TableStyle(table_style))
     
@@ -2721,9 +3209,6 @@ def crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, 
         numero = buscar_numero_jugador(jugador_data, numeros_jugadores)
         if numero:
             nombre = f"<b>#{numero}</b> {nombre}"
-        
-        # Agregar partidos jugados al nombre en color blanco
-        nombre = f"{nombre} <font size='8' color='white'>({partidos_jugados} partidos jugados)</font>"
         
         # Calcular estadísticas por partido
         minutos_totales = jugador_data['MIN'] / jugador_data['PJ'] / 60  # Minutos por partido
@@ -2839,21 +3324,47 @@ def crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, 
             ('BOTTOMPADDING', (0, 0), (-1, -1), 2)
         ]))
         
-        # Estructura de la ficha: nombre arriba, foto izquierda + stats derecha
+        # Crear texto de partidos jugados con formato más adecuado
+        partidos_text = f"{partidos_jugados} partidos" if partidos_jugados != 1 else "1 partido"
+        partidos_style = ParagraphStyle('PartidosJugados', fontSize=7, fontName='Helvetica-Bold',
+                                      textColor=colors.HexColor('#666666'), alignment=TA_CENTER, leading=8)
+        partidos_paragraph = Paragraph(partidos_text, partidos_style)
+        
+        # Crear una mini-tabla para la columna izquierda (foto + partidos)
+        foto_y_partidos_data = [
+            [foto_jugador],
+            [partidos_paragraph]
+        ]
+        
+        foto_y_partidos_table = Table(foto_y_partidos_data, 
+                                    colWidths=[20*mm],
+                                    rowHeights=[14*mm, 6*mm])  # Más espacio para el texto debajo
+        
+        foto_y_partidos_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (0, 0), 'MIDDLE'),  # Foto centrada
+            ('VALIGN', (0, 1), (0, 1), 'BOTTOM'),  # Partidos abajo
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 1),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 1)
+        ]))
+        
+        # Estructura de la ficha: mantenemos EXACTAMENTE la misma estructura anterior
         ficha_data = [
             # Fila 1: Nombre del jugador (span completo)
             [Paragraph(nombre, nombre_style), ""],
-            # Fila 2: Foto a la izquierda, estadísticas a la derecha
-            [foto_jugador, stats_table]
+            # Fila 2: Foto+partidos a la izquierda, estadísticas a la derecha
+            [foto_y_partidos_table, stats_table]
         ]
         
         ficha_table = Table(ficha_data, 
-                           colWidths=[20*mm, 62*mm],  # Foto más pequeña, stats más amplias
-                           rowHeights=[8*mm, 32*mm])
+                           colWidths=[20*mm, 62*mm],  # MISMAS dimensiones que antes
+                           rowHeights=[8*mm, 32*mm])  # MISMAS alturas que antes
         
         ficha_table.setStyle(TableStyle([
             ('SPAN', (0, 0), (1, 0)),  # Nombre ocupa ambas columnas
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # Todo centrado como antes
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#000000')),
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a5568')),  # Fondo del nombre - mismo gris que comparativa
@@ -3962,7 +4473,8 @@ def generar_pdf_final(JSON_PATH, liga, grupo, equipo, datos_json_path=None, resu
         equipo_url=equipo_url,  # Nuevo parámetro
         df_resultados=df_resultados,  # Nuevo parámetro
         JSON_PATH=JSON_PATH,  # Nuevo parámetro para historial
-        temporada=temporada  # Nuevo parámetro para temporada actual
+        temporada=temporada,  # Nuevo parámetro para temporada actual
+        liga=liga  # Nuevo parámetro para filtrar partidos por liga
     )
     
     # 4) Generar elementos de shot charts

@@ -35,9 +35,103 @@ USER_LIMITS_PATH = BASE_DIR / "data" / "user_limits.json"  # Archivo para guarda
 TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
-TELEGRAM_TOKEN = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
+# Desarollo bot IVAN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+# BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
+
+# ==========================
+# CONFIGURACIÓN DE LOGS A ADMINS
+# ==========================
+ADMIN_LOG_CHAT_ID = -1003142296298  # Grupo de logs de admins
+SEND_ADMIN_LOGS = True  # Activar/desactivar logs
+INCLUDE_PDF_COPY = True  # Enviar copia del PDF a admins
+
+# ==========================
+# SISTEMA DE LOGS A ADMINS
+# ==========================
+
+async def send_admin_log(
+    context: ContextTypes.DEFAULT_TYPE,
+    user_id: int,
+    user_name: str,
+    username: str,
+    competicion: str,
+    grupo: str,
+    equipo: str,
+    remaining: int,
+    max_generations: int,
+    pdf_path: str = None,
+    success: bool = True,
+    error_msg: str = None,
+    generation_time: str = "N/A"
+):
+    """
+    Envía un log detallado al grupo de administradores cuando se genera un PDF
+    """
+    if not SEND_ADMIN_LOGS or not ADMIN_LOG_CHAT_ID:
+        return
+    
+    try:
+        import datetime
+        from pathlib import Path
+        
+        # Información básica
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S - %d/%m/%Y")
+        status_icon = "✅" if success else "❌"
+        status_text = "Completado" if success else f"Error: {error_msg or 'Desconocido'}"
+        
+        # Información del archivo PDF
+        file_info = ""
+        if pdf_path and Path(pdf_path).exists():
+            file_size = Path(pdf_path).stat().st_size
+            file_size_mb = round(file_size / (1024 * 1024), 2)
+            file_info = f"📁 Archivo: {Path(pdf_path).name} ({file_size_mb} MB)"
+        
+        # Crear mensaje de log
+        log_message = f"""🤖 **PiScouting Bot - Nuevo PDF**
+
+📊 **PDF generado** {status_icon}
+
+👤 **USUARIO:**
+• Nombre: {user_name}
+• Username: @{username if username else 'Sin username'}
+• User ID: `{user_id}`
+
+🏀 **SOLICITUD:**
+• Equipo: {equipo}
+• Competición: {competicion}
+• Grupo: {grupo}
+• Timestamp: {timestamp}
+
+📊 **ESTADÍSTICAS:**
+• Generaciones restantes: {remaining} de {max_generations}
+• Tiempo de generación: {generation_time}
+{file_info}
+
+{status_icon} **Estado:** {status_text}
+"""
+        
+        # Enviar mensaje de log
+        await context.bot.send_message(
+            chat_id=ADMIN_LOG_CHAT_ID,
+            text=log_message,
+            parse_mode='Markdown'
+        )
+        
+        # Enviar copia del PDF si está activado y el PDF existe
+        if INCLUDE_PDF_COPY and success and pdf_path and Path(pdf_path).exists():
+            with open(pdf_path, 'rb') as pdf_file:
+                await context.bot.send_document(
+                    chat_id=ADMIN_LOG_CHAT_ID,
+                    document=pdf_file,
+                    filename=f"ADMIN_COPY_{equipo.replace(' ', '_')}.pdf",
+                    caption=f"📋 Copia del PDF generado para {user_name} (@{username if username else 'sin_username'})"
+                )
+        
+    except Exception as e:
+        print(f"Error enviando log a admins: {e}")
 
 # ==========================
 # SISTEMA DE COLA PARA PETICIONES (CON LOCK)
@@ -985,6 +1079,22 @@ async def process_pdf_background(
     Procesa la generación del PDF en segundo plano.
     Esta función se ejecuta sin bloquear la interfaz del bot.
     """
+    import time
+    start_time = time.time()
+    pdf_path = None
+    
+    # Obtener información del usuario para logs
+    try:
+        user_info = await context.bot.get_chat(user_id)
+        user_name = user_info.first_name or "Usuario"
+        if user_info.last_name:
+            user_name += f" {user_info.last_name}"
+        username = user_info.username
+    except:
+        user_data = get_user_data(user_id)
+        user_name = user_data.get("name", f"Usuario {user_id}")
+        username = None
+    
     try:
         # ESPERAR TURNO: Solo un PDF puede generarse a la vez
         async with processing_lock:
@@ -1014,6 +1124,10 @@ async def process_pdf_background(
                 None,  # max_matches
                 TEMPORADA_ACTUAL  # temporada
             )
+        
+        # Calcular tiempo de generación
+        end_time = time.time()
+        generation_time = f"{int((end_time - start_time) // 60)}m {int((end_time - start_time) % 60)}s"
         
         # Eliminar de la cola después de completar (fuera del lock)
         remove_from_queue(user_id)
@@ -1045,6 +1159,23 @@ async def process_pdf_background(
                            f"🏆 {competicion} - {grupo}\n\n"
                            f"📊 Generaciones restantes: {remaining}"
                 )
+            
+            # NUEVO: Enviar log a administradores
+            await send_admin_log(
+                context=context,
+                user_id=user_id,
+                user_name=user_name,
+                username=username,
+                competicion=competicion,
+                grupo=grupo,
+                equipo=equipo,
+                remaining=remaining,
+                max_generations=max_generations,
+                pdf_path=pdf_path,
+                success=True,
+                generation_time=generation_time
+            )
+            
         else:
             # Si el PDF falló, devolver la generación al usuario
             remove_from_queue(user_id)
@@ -1061,8 +1192,29 @@ async def process_pdf_background(
                 parse_mode='Markdown'
             )
             
+            # Log de error a administradores
+            await send_admin_log(
+                context=context,
+                user_id=user_id,
+                user_name=user_name,
+                username=username,
+                competicion=competicion,
+                grupo=grupo,
+                equipo=equipo,
+                remaining=remaining + 1,  # Devuelta
+                max_generations=max_generations,
+                pdf_path=None,
+                success=False,
+                error_msg="Archivo PDF no encontrado",
+                generation_time=generation_time
+            )
+            
     except Exception as e:
         print(f"Error generando PDF en background: {e}")
+        
+        # Calcular tiempo hasta el error
+        end_time = time.time()
+        generation_time = f"{int((end_time - start_time) // 60)}m {int((end_time - start_time) % 60)}s"
         
         # Si hubo error, devolver la generación al usuario
         remove_from_queue(user_id)
@@ -1078,6 +1230,23 @@ async def process_pdf_background(
                 [InlineKeyboardButton("🔁 Reintentar", callback_data="restart")]
             ]),
             parse_mode='Markdown'
+        )
+        
+        # Log de error a administradores
+        await send_admin_log(
+            context=context,
+            user_id=user_id,
+            user_name=user_name,
+            username=username,
+            competicion=competicion,
+            grupo=grupo,
+            equipo=equipo,
+            remaining=remaining + 1,  # Devuelta
+            max_generations=max_generations,
+            pdf_path=None,
+            success=False,
+            error_msg=str(e),
+            generation_time=generation_time
         )
 
 
