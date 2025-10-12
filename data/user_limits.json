@@ -8,7 +8,7 @@
       "authorized": true,
       "admin": true,
       "max_generations": 50,
-      "remaining_generations": 48,
+      "remaining_generations": 42,
       "name": "Iván"
     },
     "2088798370": {
@@ -30,7 +30,7 @@
       "admin": false,
       "max_generations": 50,
       "remaining_generations": 50,
-      "name": "Bobber Gey NIGGA"
+      "name": "Pablo Castera"
     }
   }
 }

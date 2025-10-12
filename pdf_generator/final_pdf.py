@@ -689,9 +689,9 @@ def pil_buffer_to_reportlab_image(img_buffer: io.BytesIO, width, height):
 
 def create_player_cell_from_buffers(player_name: str, player_number: str, photo_buffer: io.BytesIO, chart_buffer: io.BytesIO):
     """Crea celda de jugador usando buffers en memoria"""
-    # Convertir buffers a imágenes ReportLab (foto más pequeña)
-    photo_img = pil_buffer_to_reportlab_image(photo_buffer, width=20*mm, height=25*mm)
-    chart_img = pil_buffer_to_reportlab_image(chart_buffer, width=35*mm, height=32*mm)
+    # Convertir buffers a imágenes ReportLab (foto más pequeña, pista más grande)
+    photo_img = pil_buffer_to_reportlab_image(photo_buffer, width=17*mm, height=22*mm)
+    chart_img = pil_buffer_to_reportlab_image(chart_buffer, width=40*mm, height=35*mm)
     
     # Crear texto con número y nombre
     if player_number and player_number.strip():
@@ -699,13 +699,13 @@ def create_player_cell_from_buffers(player_name: str, player_number: str, photo_
     else:
         display_text = player_name
     
-    # Crear tabla interna
+    # Crear tabla interna (columna de foto más pequeña, columna de pista más grande)
     player_content = [
         [display_text, ""],  # Nombre del jugador (y número si disponible)
         [photo_img, chart_img]  # Foto | Gráfica
     ]
     
-    player_table = Table(player_content, colWidths=[25*mm, 35*mm], rowHeights=[8*mm, 35*mm])
+    player_table = Table(player_content, colWidths=[20*mm, 40*mm], rowHeights=[8*mm, 37*mm])
     player_table.setStyle(TableStyle([
         ('SPAN', (0, 0), (1, 0)),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -4081,7 +4081,9 @@ def generar_shot_charts_elements(liga, grupo, equipo, datos_json_path=DEFAULT_DA
             chart_buffer = plot_player_shots_to_buffer(
                 court_image_path=court_image_path,
                 shots_list=shots_list,
-                player_id=pl_id
+                player_id=pl_id,
+                rotate_ccw90=False,  # Nueva versión usa False por defecto
+                point_size=120  # Puntos más grandes para mejor visibilidad
             )
             
             # Obtener foto del jugador en buffer
@@ -4116,7 +4118,7 @@ def generar_shot_charts_elements(liga, grupo, equipo, datos_json_path=DEFAULT_DA
     main_table = Table(
         table_data,
         colWidths=[63*mm, 63*mm, 63*mm, 63*mm],  # Mantenemos el mismo tamaño: 4 columnas de 63mm
-        rowHeights=[48*mm] * len(table_data)  # Mantenemos la altura original
+        rowHeights=[50*mm] * len(table_data)  # Aumentamos altura para acomodar imagen de pista más grande
     )
     
     main_table.setStyle(TableStyle([

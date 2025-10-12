@@ -1085,14 +1085,18 @@ async def process_pdf_background(
     
     # Obtener información del usuario para logs
     try:
-        user_info = await context.bot.get_chat(user_id)
-        user_name = user_info.first_name or "Usuario"
-        if user_info.last_name:
-            user_name += f" {user_info.last_name}"
-        username = user_info.username
-    except:
+        # PRIORIDAD: Usar el nombre configurado en user_limits.json
         user_data = get_user_data(user_id)
         user_name = user_data.get("name", f"Usuario {user_id}")
+        
+        # Obtener username de Telegram para información adicional
+        try:
+            user_info = await context.bot.get_chat(user_id)
+            username = user_info.username
+        except:
+            username = None
+    except:
+        user_name = f"Usuario {user_id}"
         username = None
     
     try:

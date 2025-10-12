@@ -129,46 +129,103 @@ def load_local_court_image(local_path: str) -> Image.Image:
 def _percent_to_pixel(value_pct: float, total_px: int) -> float:
     return (float(value_pct) * float(total_px)) / 100.0
 
-def _to_halfcourt_pixels(shots_pct: Iterable[Dict], full_W: int, full_H: int, trim_left_px: int = 1) -> Tuple[List[Dict], int, int, int]:
-    left = int(full_W // 2) + int(trim_left_px)
-    half_W = int(full_W - left)
-    half_H = int(full_H)
+def _to_halfcourt_pixels_new(shots_pct: Iterable[Dict], court_W: int, court_H: int) -> List[Dict]:
+    """
+    Nueva función para transformar coordenadas de shot charts usando imagen de medio campo vertical.
+    
+    Flujo:
+    1. Los puntos originales son de pista completa (0-100% x, 0-100% y)
+    2. Invertimos para obtener solo medio campo (lado derecho de la pista completa)
+    3. Rotamos para formato vertical (la imagen ya está en vertical)
+    
+    Args:
+        shots_pct: Lista de tiros con coordenadas en porcentajes
+        court_W: Ancho de la imagen de medio campo
+        court_H: Alto de la imagen de medio campo
+    
+    Returns:
+        Lista de tiros con coordenadas en píxeles ajustadas
+    """
     shots_px = []
     for s in shots_pct:
-        x_full = _percent_to_pixel(float(s.get("x")), full_W)
-        y_full = _percent_to_pixel(float(s.get("y")), full_H)
-        if x_full < (full_W / 2):
-            x_full = full_W - x_full
-        x_adj = x_full - left
-        shot_px = dict(s); shot_px.update({"x": x_adj, "y": y_full})
+        # 1. Obtener coordenadas originales (0-100%)
+        x_pct = float(s.get("x", 0))
+        y_pct = float(s.get("y", 0))
+        
+        # 2. Invertir para medio campo (tomar lado derecho de pista completa)
+        # Si x < 50%, lo invertimos al lado derecho: x_new = 100 - x
+        if x_pct < 50:
+            x_pct = 100 - x_pct
+        
+        # 3. Convertir a coordenadas de medio campo (0-50% -> 0-100%)
+        # Mapear x de [50-100%] a [0-100%] de medio campo
+        x_half = (x_pct - 50) * 2  # Escalar de [50-100] a [0-100]
+        
+        # 4. Para formato vertical, rotamos las coordenadas 90° horario
+        # x_new = y, y_new = 100 - x
+        x_rotated = y_pct
+        y_rotated = 100 - x_half
+        
+        # 5. Convertir a píxeles
+        x_pixel = _percent_to_pixel(x_rotated, court_W)
+        y_pixel = _percent_to_pixel(y_rotated, court_H)
+        
+        # Crear nuevo shot con coordenadas transformadas
+        shot_px = dict(s)
+        shot_px.update({"x": x_pixel, "y": y_pixel})
         shots_px.append(shot_px)
+    
+    return shots_px
+
+def _to_halfcourt_pixels(shots_pct: Iterable[Dict], full_W: int, full_H: int, trim_left_px: int = 1) -> Tuple[List[Dict], int, int, int]:
+    """
+    Función legacy mantenida para compatibilidad.
+    Ahora usa la nueva lógica para imagen de medio campo vertical.
+    """
+    # Como ahora usamos imagen de medio campo, full_W y full_H son las dimensiones del medio campo
+    shots_px = _to_halfcourt_pixels_new(shots_pct, full_W, full_H)
+    
+    # Retornar valores compatibles con la interfaz existente
+    left = 0  # No hay recorte porque ya es medio campo
+    half_W = full_W  # El ancho completo es el medio campo
+    half_H = full_H  # El alto completo
+    
     return shots_px, left, half_W, half_H
 
 def plot_halfcourt_shots_clean(court_img: Image.Image, shots_pct: List[Dict], save_path: str,
-                               trim_left_px: int = 1, mask_px: int = 3, rotate_ccw90: bool = True,
-                               show_frame: bool = True, point_size: int = 80, edge_lw: float = 0.5) -> str:
-    full_W, full_H = court_img.size
-    shots_px, left, half_W, half_H = _to_halfcourt_pixels(shots_pct, full_W, full_H, trim_left_px=trim_left_px)
-    halfcourt_img = court_img.crop((left, 0, full_W, full_H))
-    fig, ax = plt.subplots(figsize=(half_W / 100, half_H / 100), dpi=100)
-    ax.imshow(halfcourt_img, extent=[0, half_W, half_H, 0], interpolation="nearest")
-    ax.set_xlim(0, half_W); ax.set_ylim(half_H, 0)
-    ax.set_aspect("equal", adjustable="box"); ax.axis("off")
+                               trim_left_px: int = 1, mask_px: int = 3, rotate_ccw90: bool = False,
+                               show_frame: bool = True, point_size: int = 120, edge_lw: float = 0.5) -> str:
+    """
+    Actualizada para usar imagen de medio campo vertical directamente.
+    """
+    court_W, court_H = court_img.size
+    
+    # Usar nueva lógica de transformación
+    shots_px = _to_halfcourt_pixels_new(shots_pct, court_W, court_H)
+    
+    # La imagen ya es de medio campo, no necesitamos recortar
+    fig, ax = plt.subplots(figsize=(court_W / 100, court_H / 100), dpi=100)
+    ax.imshow(court_img, extent=[0, court_W, court_H, 0], interpolation="nearest")
+    ax.set_xlim(0, court_W)
+    ax.set_ylim(court_H, 0)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+    
     if mask_px and mask_px > 0:
-        ax.add_patch(Rectangle((0, 0), mask_px, half_H, facecolor="white", edgecolor="none", zorder=1.5))
+        ax.add_patch(Rectangle((0, 0), mask_px, court_H, facecolor="white", edgecolor="none", zorder=1.5))
+    
     for s in shots_px:
         made = str(s.get("m", "0")) == "1"
-        ax.scatter(s["x"], s["y"], c=("green" if made else "red"), s=point_size, edgecolors="black", linewidths=edge_lw, zorder=2)
-    if show_frame:
-        ax.add_patch(Rectangle((0, 0), half_W, half_H, fill=False, edgecolor="black", linewidth=2, zorder=3))
-    tmp_path = save_path.replace(".png", "_temp.png")
-    plt.savefig(tmp_path, bbox_inches="tight", pad_inches=0); plt.close(fig)
-    final_path = save_path
-    if rotate_ccw90:
-        Image.open(tmp_path).rotate(-90, expand=True).save(final_path); os.remove(tmp_path)
-    else:
-        os.replace(tmp_path, final_path)
-    return final_path
+        ax.scatter(s["x"], s["y"], c=("green" if made else "red"), s=point_size, 
+                  edgecolors="black", linewidths=edge_lw, zorder=2)
+    
+    # Marco removido - ya no dibujamos borde negro alrededor
+    
+    # Guardar directamente, ya no necesitamos rotación
+    plt.savefig(save_path, bbox_inches="tight", pad_inches=0)
+    plt.close(fig)
+    
+    return save_path
 
 
 # =============== Selección exacta en datos.json (liga->grupo->equipo) ===============
@@ -341,7 +398,7 @@ def plot_player_accumulated_shots(court_image_path: str = None,
                                 trim_left_px: int = 1, 
                                 mask_px: int = 3, 
                                 rotate_ccw90: bool = True,
-                                point_size: int = 80) -> str:
+                                point_size: int = 120) -> str:
     # Usar ruta por defecto si no se proporciona
     if court_image_path is None:
         court_image_path = DEFAULT_COURT_IMAGE
@@ -364,7 +421,7 @@ DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 # Rutas por defecto
 DEFAULT_DATOS_JSON = os.path.join(DATA_DIR, "datos.json")
 DEFAULT_RESULTS_CSV = os.path.join(DATA_DIR, "datos_completos.csv")
-DEFAULT_COURT_IMAGE = os.path.join(DATA_DIR, "basket_court_edited.png")
+DEFAULT_COURT_IMAGE = os.path.join(DATA_DIR, "half_court_corrected.jpg")
 DEFAULT_OUTPUT_DIR = os.path.join(DATA_DIR, "scouting_output")
 
 # =============== Pipeline principal ===============
@@ -501,48 +558,49 @@ def generate_team_scouting_shotcharts(
 
 # =============== Funciones auxiliares para PDF ===============
 def plot_player_shots_to_buffer(court_image_path: str, shots_list: List[Dict], player_id: str,
-                               trim_left_px: int = 1, mask_px: int = 3, rotate_ccw90: bool = True,
-                               point_size: int = 80) -> io.BytesIO:
-    """Genera gráfica de tiros y la retorna como buffer en memoria"""
+                               trim_left_px: int = 1, mask_px: int = 3, rotate_ccw90: bool = False,
+                               point_size: int = 120) -> io.BytesIO:
+    """
+    Genera gráfica de tiros y la retorna como buffer en memoria.
+    Actualizada para usar imagen de medio campo vertical directamente.
+    """
     court_img = load_local_court_image(court_image_path)
     
-    # Generar gráfica en memoria
-    full_W, full_H = court_img.size
-    shots_px, left, half_W, half_H = _to_halfcourt_pixels(shots_list, full_W, full_H, trim_left_px=trim_left_px)
-    halfcourt_img = court_img.crop((left, 0, full_W, full_H))
+    # La imagen ya es de medio campo vertical, usamos sus dimensiones directamente
+    court_W, court_H = court_img.size
     
-    fig, ax = plt.subplots(figsize=(half_W / 100, half_H / 100), dpi=100)
-    ax.imshow(halfcourt_img, extent=[0, half_W, half_H, 0], interpolation="nearest")
-    ax.set_xlim(0, half_W); ax.set_ylim(half_H, 0)
-    ax.set_aspect("equal", adjustable="box"); ax.axis("off")
+    # Transformar coordenadas usando la nueva lógica
+    shots_px = _to_halfcourt_pixels_new(shots_list, court_W, court_H)
     
+    # Crear figura con las dimensiones correctas
+    fig, ax = plt.subplots(figsize=(court_W / 100, court_H / 100), dpi=100)
+    ax.imshow(court_img, extent=[0, court_W, court_H, 0], interpolation="nearest")
+    ax.set_xlim(0, court_W)
+    ax.set_ylim(court_H, 0)
+    ax.set_aspect("equal", adjustable="box")
+    ax.axis("off")
+    
+    # Máscara opcional (ya no necesaria para bordes, pero mantenemos compatibilidad)
     if mask_px and mask_px > 0:
-        ax.add_patch(Rectangle((0, 0), mask_px, half_H, facecolor="white", edgecolor="none", zorder=1.5))
+        ax.add_patch(Rectangle((0, 0), mask_px, court_H, facecolor="white", edgecolor="none", zorder=1.5))
     
+    # Plotear los tiros
     for s in shots_px:
         made = str(s.get("m", "0")) == "1"
         ax.scatter(s["x"], s["y"], c=("green" if made else "red"), s=point_size, 
                   edgecolors="black", linewidths=0.5, zorder=2)
     
-    ax.add_patch(Rectangle((0, 0), half_W, half_H, fill=False, edgecolor="black", linewidth=2, zorder=3))
+    # Marco removido - ya no dibujamos borde negro alrededor
     
     # Guardar en buffer
     img_buffer = io.BytesIO()
     plt.savefig(img_buffer, format='PNG', bbox_inches="tight", pad_inches=0)
     plt.close(fig)
     
-    # Rotar si es necesario
-    if rotate_ccw90:
-        img_buffer.seek(0)
-        img = Image.open(img_buffer)
-        rotated_img = img.rotate(-90, expand=True)
-        final_buffer = io.BytesIO()
-        rotated_img.save(final_buffer, format='PNG')
-        final_buffer.seek(0)
-        return final_buffer
-    else:
-        img_buffer.seek(0)
-        return img_buffer
+    # Ya no necesitamos rotar porque la imagen ya está en vertical
+    # Mantenemos el parámetro para compatibilidad pero ignoramos la rotación
+    img_buffer.seek(0)
+    return img_buffer
 
 def get_player_photo_buffer(code: str) -> io.BytesIO:
     """Obtiene foto del jugador y la retorna como buffer, usando caché si existe"""
