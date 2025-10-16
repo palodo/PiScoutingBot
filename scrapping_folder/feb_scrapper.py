@@ -150,13 +150,33 @@ class FEBScrapper:
 
     def obtener_todos_los_equipos_feb(self) -> pd.DataFrame:
         """Obtiene todos los equipos de 1ª FEB, 2ª FEB y 3ª FEB (Liga Regular)."""
+        print(f"🏀 Iniciando obtención de equipos de todas las categorías FEB...")
         dfs = []
-        for categoria in ["1ª FEB", "2ª FEB", "3ª FEB"]:
-            print(f"Procesando categoría: {categoria}")
+        total_equipos = 0
+        
+        for i, categoria in enumerate(["1ª FEB", "2ª FEB", "3ª FEB"], 1):
+            print(f"📊 Procesando categoría {i}/3: {categoria}")
+            print(f"   🔍 Obteniendo grupos y equipos...")
+            
             df_cat = self.get_equipos_dataframe_for_category(categoria, only_liga_regular=True)
+            equipos_categoria = len(df_cat)
+            total_equipos += equipos_categoria
+            
+            print(f"   ✅ {categoria}: {equipos_categoria} equipos encontrados")
+            if not df_cat.empty:
+                grupos = df_cat['grupo'].nunique()
+                print(f"   📁 Grupos en {categoria}: {grupos}")
+            
             dfs.append(df_cat)
+            
+        print(f"🎯 Resumen: {total_equipos} equipos totales en {len(dfs)} categorías")
+        
         if dfs:
-            return pd.concat(dfs, ignore_index=True)
+            resultado = pd.concat(dfs, ignore_index=True)
+            print(f"✅ DataFrame combinado creado con {len(resultado)} filas")
+            return resultado
+        
+        print("⚠️  No se encontraron equipos, devolviendo DataFrame vacío")
         return pd.DataFrame(columns=["categoria", "grupo", "equipo", "url", "p_favor", "p_contra", "jugados", "ganados", "perdidos"])
 
     # =============================
@@ -516,6 +536,9 @@ class FEBScrapper:
 
     def crear_base_datos_completa_feb(self, nombre_archivo: str = "estadisticas_feb_completas.json") -> Dict:
         """Genera JSON completo organizado por categoría y grupo para 1ª FEB, 2ª FEB y EBA."""
+        print(f"🎯 Iniciando creación de base de datos completa FEB...")
+        print(f"📁 Archivo destino: {nombre_archivo}")
+        
         df_completo = self.obtener_todos_los_equipos_feb()
 
         base_datos: Dict = {
@@ -526,13 +549,24 @@ class FEBScrapper:
             "categorias": {},
         }
 
+        print(f"📊 Estadísticas iniciales:")
+        print(f"   - Categorías: {base_datos['total_categorias']}")
+        print(f"   - Grupos: {base_datos['total_grupos']}")
+        print(f"   - Equipos: {base_datos['total_equipos']}")
+
         if df_completo.empty:
+            print("⚠️  DataFrame vacío, guardando estructura básica")
             with open(nombre_archivo, 'w', encoding='utf-8') as f:
                 json.dump(base_datos, f, indent=2, ensure_ascii=False)
             return base_datos
 
+        print(f"\n🔄 Procesando estadísticas detalladas por equipo...")
+        print(f"⏱️  Pausa entre peticiones: {self.pause}s")
+        print(f"⚠️  Este proceso puede tardar {base_datos['total_equipos'] * self.pause / 60:.1f} minutos")
+
         por_categoria = df_completo.groupby('categoria')
         for nombre_categoria, equipos_categoria in por_categoria:
+            print(f"\n📂 Procesando categoría: {nombre_categoria}")
             base_datos["categorias"][nombre_categoria] = {
                 "nombre": nombre_categoria,
                 "total_grupos": int(equipos_categoria['grupo'].nunique()),
@@ -542,6 +576,7 @@ class FEBScrapper:
 
             por_grupo = equipos_categoria.groupby('grupo')
             for nombre_grupo, equipos_grupo in por_grupo:
+                print(f"   📁 Grupo: {nombre_grupo} ({len(equipos_grupo)} equipos)")
                 base_datos["categorias"][nombre_categoria]["grupos"][nombre_grupo] = {
                     "nombre": nombre_grupo,
                     "categoria": nombre_categoria,
@@ -549,20 +584,25 @@ class FEBScrapper:
                     "equipos": [],
                 }
 
-                for _, row in equipos_grupo.iterrows():
+                for idx, (_, row) in enumerate(equipos_grupo.iterrows(), 1):
+                    equipo_nombre = row.get('equipo', 'Desconocido')
                     try:
+                        print(f"      🏀 {idx}/{len(equipos_grupo)}: {equipo_nombre}")
                         equipo_data = self._equipo_json_from_row(
                             row, nombre_liga=nombre_grupo, nombre_categoria=nombre_categoria
                         )
                         base_datos["categorias"][nombre_categoria]["grupos"][nombre_grupo]["equipos"].append(equipo_data)
+                        print(f"         ✅ Completado")
                         time.sleep(self.pause)
                     except Exception as e:
-                        print(f"      Error procesando {row.get('equipo')}: {e}")
+                        print(f"         ❌ Error procesando {equipo_nombre}: {e}")
                         continue
 
+        print(f"\n💾 Guardando archivo JSON: {nombre_archivo}")
         with open(nombre_archivo, 'w', encoding='utf-8') as f:
             json.dump(base_datos, f, indent=2, ensure_ascii=False)
-
+        
+        print(f"✅ Base de datos completa creada exitosamente")
         return base_datos
 
 

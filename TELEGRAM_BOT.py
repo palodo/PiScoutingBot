@@ -855,9 +855,14 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         help_text += "  Ejemplo: `/reset_user 123 50`\n"
         help_text += "• `/reset_all` - Resetear todos los contadores\n\n"
         
-        help_text += "**💡 Notas de Admin:**\n"
+        help_text += "**� Gestión de Datos:**\n"
+        help_text += "• `/run_scraper` - Ejecutar scraper multi-temporada\n"
+        help_text += "  Actualiza datos de FEB 2024 y 2025\n\n"
+        
+        help_text += "**�💡 Notas de Admin:**\n"
         help_text += "• Si asignas generaciones > máximo actual, se actualiza el máximo\n"
         help_text += "• Los cambios se guardan automáticamente en el JSON\n"
+        help_text += "• El scraper puede tardar 15-45 minutos en completarse\n"
     
     help_text += "\n**🔧 Soporte:**\n"
     help_text += "Si tienes problemas, contacta con el administrador del bot."
@@ -922,6 +927,229 @@ async def admin_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("❌ Error: User ID debe ser un número.")
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {str(e)}")
+
+async def admin_run_scraper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando administrativo para ejecutar el scraper multi-temporada"""
+    user_id = update.effective_user.id
+    
+    if not is_user_admin(user_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        return
+    
+    try:
+        # Obtener información del usuario admin
+        user_data = get_user_data(user_id)
+        admin_name = user_data.get("name", update.effective_user.first_name or f"Admin {user_id}")
+        
+        # Mensaje inicial de confirmación
+        await update.message.reply_text(
+            f"🤖 **Scraper Multi-Temporada FEB**\n\n"
+            f"👑 Solicitado por: {admin_name}\n"
+            f"🕒 Iniciando proceso...\n\n"
+            f"⚠️ **IMPORTANTE:**\n"
+            f"• Este proceso puede tardar 15-45 minutos\n"
+            f"• Actualiza datos de 2024 y 2025\n"
+            f"• No interrumpir durante la ejecución\n\n"
+            f"📊 Te mantendré informado del progreso...",
+            parse_mode='Markdown'
+        )
+        
+        # Ejecutar scraper en background
+        asyncio.create_task(
+            run_scraper_background(
+                chat_id=update.message.chat_id,
+                admin_user_id=user_id,
+                admin_name=admin_name,
+                context=context
+            )
+        )
+        
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ **Error iniciando scraper**\n\n"
+            f"```\n{str(e)}\n```",
+            parse_mode='Markdown'
+        )
+
+async def run_scraper_background(
+    chat_id: int,
+    admin_user_id: int,
+    admin_name: str,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    """
+    Ejecuta el scraper multi-temporada en segundo plano y reporta el progreso.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+    import time
+    
+    start_time = time.time()
+    
+    try:
+        # Cambiar al directorio del bot
+        original_dir = Path.cwd()
+        bot_dir = Path(__file__).parent
+        
+        # Mensaje de inicio
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"🚀 **Scraper iniciado**\n\n"
+                 f"📁 Directorio: `{bot_dir}`\n"
+                 f"📅 Hora inicio: {time.strftime('%H:%M:%S')}\n\n"
+                 f"⏳ Ejecutando comando...",
+            parse_mode='Markdown'
+        )
+        
+        # Comando a ejecutar
+        cmd = [sys.executable, "scrapping_folder/multi_season_scraper.py"]
+        
+        # Ejecutar el scraper usando subprocess
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=bot_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            text=True
+        )
+        
+        # Enviar actualizaciones de progreso cada 2 minutos
+        progress_task = asyncio.create_task(
+            send_progress_updates(context, chat_id, start_time)
+        )
+        
+        # Esperar a que termine el proceso
+        stdout, stderr = await process.communicate()
+        
+        # Cancelar las actualizaciones de progreso
+        progress_task.cancel()
+        
+        # Calcular tiempo total
+        end_time = time.time()
+        total_time = end_time - start_time
+        time_str = f"{int(total_time // 60)}m {int(total_time % 60)}s"
+        
+        if process.returncode == 0:
+            # Éxito
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ **Scraper completado exitosamente**\n\n"
+                     f"⏱️ Tiempo total: {time_str}\n"
+                     f"📁 Archivo generado: `data/datos_historicos.json`\n"
+                     f"📅 Hora finalización: {time.strftime('%H:%M:%S')}\n\n"
+                     f"🔄 **Los datos del bot se actualizarán automáticamente**",
+                parse_mode='Markdown'
+            )
+            
+            # Recargar datos en el bot
+            try:
+                global DATA, COMPETICIONES, GRUPOS, EQUIPOS
+                DATA = load_data_json()
+                COMPETICIONES, GRUPOS, EQUIPOS = extract_structures(DATA)
+                
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"🔄 **Datos recargados en el bot**\n\n"
+                         f"📊 Nuevas estadísticas:\n"
+                         f"• Competiciones: {len(COMPETICIONES)}\n"
+                         f"• Total grupos: {sum(len(grupos) for grupos in GRUPOS.values())}\n"
+                         f"• Total equipos: {sum(len(equipos) for equipos in EQUIPOS.values())}",
+                    parse_mode='Markdown'
+                )
+            except Exception as reload_error:
+                await context.bot.send_message(
+                    chat_id=chat_id,
+                    text=f"⚠️ **Scraper completado, pero error recargando datos**\n\n"
+                         f"```\n{str(reload_error)}\n```\n\n"
+                         f"💡 Reinicia el bot manualmente para usar los nuevos datos.",
+                    parse_mode='Markdown'
+                )
+            
+            # Log de éxito a admins
+            if SEND_ADMIN_LOGS and ADMIN_LOG_CHAT_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=ADMIN_LOG_CHAT_ID,
+                        text=f"🔄 **Scraper ejecutado exitosamente**\n\n"
+                             f"👑 **Administrador:** {admin_name}\n"
+                             f"• User ID: `{admin_user_id}`\n"
+                             f"• Tiempo: {time_str}\n"
+                             f"• Resultado: ✅ Éxito\n"
+                             f"• Timestamp: {time.strftime('%H:%M:%S - %d/%m/%Y')}",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+        
+        else:
+            # Error
+            error_msg = stderr or "Error desconocido"
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ **Scraper falló**\n\n"
+                     f"⏱️ Tiempo transcurrido: {time_str}\n"
+                     f"🔴 Código de salida: {process.returncode}\n\n"
+                     f"**Error:**\n```\n{error_msg[:1000]}\n```",
+                parse_mode='Markdown'
+            )
+            
+            # Log de error a admins
+            if SEND_ADMIN_LOGS and ADMIN_LOG_CHAT_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=ADMIN_LOG_CHAT_ID,
+                        text=f"❌ **Scraper falló**\n\n"
+                             f"👑 **Administrador:** {admin_name}\n"
+                             f"• User ID: `{admin_user_id}`\n"
+                             f"• Tiempo: {time_str}\n"
+                             f"• Código salida: {process.returncode}\n"
+                             f"• Error: {error_msg[:200]}...\n"
+                             f"• Timestamp: {time.strftime('%H:%M:%S - %d/%m/%Y')}",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+    
+    except Exception as e:
+        # Error del proceso asyncio
+        end_time = time.time()
+        total_time = end_time - start_time
+        time_str = f"{int(total_time // 60)}m {int(total_time % 60)}s"
+        
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ **Error ejecutando scraper**\n\n"
+                 f"⏱️ Tiempo transcurrido: {time_str}\n\n"
+                 f"**Error:**\n```\n{str(e)}\n```",
+            parse_mode='Markdown'
+        )
+
+async def send_progress_updates(context: ContextTypes.DEFAULT_TYPE, chat_id: int, start_time: float):
+    """Envía actualizaciones de progreso cada 2 minutos"""
+    import time
+    
+    try:
+        while True:
+            await asyncio.sleep(120)  # 2 minutos
+            
+            elapsed = time.time() - start_time
+            elapsed_str = f"{int(elapsed // 60)}m {int(elapsed % 60)}s"
+            
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"⏳ **Scraper en progreso...**\n\n"
+                     f"🕒 Tiempo transcurrido: {elapsed_str}\n"
+                     f"🔄 El proceso sigue ejecutándose...\n\n"
+                     f"💡 No interrumpir, el scraper está funcionando",
+                parse_mode='Markdown'
+            )
+    except asyncio.CancelledError:
+        # Se canceló porque el proceso terminó
+        pass
+    except Exception as e:
+        # Error enviando updates, pero no interrumpir el scraper
+        print(f"Error enviando actualizaciones de progreso: {e}")
 
 async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Operación cancelada. Usa /start para comenzar de nuevo.")
@@ -1291,6 +1519,7 @@ def main():
     app.add_handler(CommandHandler("reset_all", admin_reset_all))
     app.add_handler(CommandHandler("list_users", admin_list_users))
     app.add_handler(CommandHandler("authorize_user", admin_authorize_user))
+    app.add_handler(CommandHandler("run_scraper", admin_run_scraper))
     
     conv = ConversationHandler(
         entry_points=[

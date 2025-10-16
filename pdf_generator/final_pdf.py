@@ -61,6 +61,78 @@ from scrapping_folder.shortchart_class import (
     DEFAULT_OUTPUT_DIR
 )
 
+# =============== SISTEMA DE NORMALIZACIÓN DE NOMBRES DE EQUIPOS ===============
+
+def cargar_mapper_equipos():
+    """
+    Carga el mapper de nombres de equipos desde el archivo JSON
+    
+    Returns:
+        dict: Diccionario con mapeo nombre_original -> nombre_normalizado
+    """
+    import json
+    from pathlib import Path
+    
+    # Ruta al archivo mapper
+    mapper_path = Path(__file__).parent.parent / "data" / "equipos_mapper.json"
+    
+    try:
+        with open(mapper_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        
+        # Crear diccionario de mapeo
+        mapper = {}
+        for equipo in data.get("equipos", []):
+            nombre_original = equipo.get("nombre_original", "")
+            nombre_normalizado = equipo.get("nombre_normalizado", "")
+            if nombre_original and nombre_normalizado:
+                mapper[nombre_original] = nombre_normalizado
+        
+        print(f"✅ Mapper de equipos cargado: {len(mapper)} mapeos")
+        return mapper
+    
+    except Exception as e:
+        print(f"⚠️ Error cargando mapper de equipos: {e}")
+        return {}
+
+def normalizar_nombre_equipo(nombre_original: str) -> str:
+    """
+    Normaliza el nombre de un equipo usando el mapper.
+    Si no encuentra el mapeo, devuelve el nombre original.
+    
+    Args:
+        nombre_original: Nombre original del equipo
+        
+    Returns:
+        str: Nombre normalizado del equipo
+    """
+    # Cargar mapper (se podría optimizar cacheando esto)
+    mapper = cargar_mapper_equipos()
+    
+    # Aplicar normalización si existe el mapeo
+    return mapper.get(nombre_original, nombre_original)
+
+def aplicar_normalizacion_dataframe(df, columna_equipo='Equipo'):
+    """
+    Aplica normalización de nombres a un DataFrame para visualización
+    
+    Args:
+        df: DataFrame de pandas
+        columna_equipo: Nombre de la columna que contiene nombres de equipos
+        
+    Returns:
+        DataFrame: Copia del DataFrame con nombres normalizados
+    """
+    import pandas as pd
+    
+    df_normalizado = df.copy()
+    
+    # Aplicar normalización solo si la columna existe
+    if columna_equipo in df_normalizado.columns:
+        df_normalizado[columna_equipo] = df_normalizado[columna_equipo].apply(normalizar_nombre_equipo)
+    
+    return df_normalizado
+
 
 def eliminar_paginas_en_blanco_pdf(input_pdf_path: str, output_pdf_path: str = None) -> str:
     """
@@ -492,9 +564,9 @@ def crear_pagina_ultimos_partidos(nombre_equipo: str, liga: str = None, csv_path
         ('FONTNAME', (2, 1), (2, -1), 'Helvetica-Bold'),
         ('FONTSIZE', (2, 1), (2, -1), 16),
         
-        # Padding - aumentado para mejor centrado
-        ('TOPPADDING', (0, 0), (-1, -1), 15),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+        # Padding - reducido para menor altura de celdas
+        ('TOPPADDING', (0, 0), (-1, -1), 8),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
         ('LEFTPADDING', (0, 0), (-1, -1), 10),
         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
     ]
@@ -724,6 +796,25 @@ def create_player_cell_from_buffers(player_name: str, player_number: str, photo_
     return player_table
 
 
+def formatear_numero_sin_salto(valor):
+    """
+    Formatea un número evitando saltos de línea en los decimales
+    usando un formato más compacto
+    """
+    if pd.isna(valor):
+        return "N/A"
+    
+    try:
+        valor_num = float(valor)
+        if valor_num == int(valor_num):
+            return f"{int(valor_num)}"
+        else:
+            # Formato con un solo decimal, usando texto más compacto
+            # Redondeamos a 1 decimal para evitar números muy largos
+            return f"{valor_num:.1f}"
+    except:
+        return str(valor)
+
 def crear_rankings_equipos(df_equipos):
     """
     Crea rankings de estadísticas de equipos.
@@ -883,14 +974,15 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
         # Añadir filas de equipos
         for i, (_, row) in enumerate(df_sorted.iterrows()):
             equipo_nombre = row['Equipo']
+            equipo_nombre_normalizado = normalizar_nombre_equipo(equipo_nombre)  # ✅ APLICAR NORMALIZACIÓN
             valor = row[columna]
             posicion = i + 1  # Posición en el ranking (1º, 2º, 3º, etc.)
             
             # Crear nombre con ranking en negrita
             ranking_bold = f"<b>{posicion}º</b>"
-            nombre_acortado = acortar_nombre(equipo_nombre, 22)  # Acortamos solo el nombre del equipo
+            nombre_acortado = acortar_nombre(equipo_nombre_normalizado, 22)  # ✅ USAR NOMBRE NORMALIZADO
             nombre_mostrar = f"{ranking_bold} {nombre_acortado}"
-            es_nuestro = equipo_nombre == equipo_seleccionado
+            es_nuestro = equipo_nombre == equipo_seleccionado  # ✅ COMPARAR CON NOMBRE ORIGINAL
             
             # Formatear número en negrita
             if columna in ['FG%', 'FG3%', 'FT%', 'Win%']:
@@ -912,9 +1004,9 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
             if es_nuestro:
                 color_texto = color_header
                 nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
-                                            alignment=0, fontName='Helvetica-Bold', leading=13)
+                                            alignment=0, fontName='Helvetica-Bold', leading=11)  # Reducido de 13 a 11
                 valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
-                                        alignment=2, fontName='Helvetica', leading=13)  # Permite HTML para negrita
+                                        alignment=2, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
             else:
                 nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
                                             alignment=0, fontName='Helvetica', leading=12)  # Permite HTML
@@ -927,6 +1019,7 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
             ])
         
         # Crear tabla con diseño mejorado - usando los mismos tamaños que en COMPARATIVA
+        # 📏 PRIMERA PÁGINA RANKINGS: Altura automática con mejor espaciado interno
         tabla = Table(datos_ranking, colWidths=[1.6*inch, 0.7*inch], rowHeights=None, splitByRow=True)
         
         # Estilos con colores consistentes
@@ -945,8 +1038,8 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
             ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 1), (-1, -1), 8),
             ('RIGHTPADDING', (0, 1), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+            ('TOPPADDING', (0, 1), (-1, -1), 5),    # ✅ Aumentado de 3 a 5 para mejor espaciado
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 5), # ✅ Aumentado de 3 a 5 para mejor espaciado
             
             # Bordes
             ('BOX', (0, 0), (-1, -1), 1, color_header),
@@ -956,11 +1049,24 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
         # Alternar colores de fondo para las filas y colores para equipo seleccionado
         for i, (_, row) in enumerate(df_sorted.iterrows(), 1):
             equipo_nombre = row['Equipo']
+            valor = row[columna]
+            
+            # Verificar si es número de 3 cifras con decimal (como 104.4)
+            es_numero_3_cifras_decimal = (isinstance(valor, (int, float)) and 
+                                        valor >= 100 and valor < 1000 and 
+                                        valor != int(valor))  # Tiene decimal
+            
             if equipo_nombre == equipo_seleccionado:
-                estilos.extend([
+                estilos_equipo = [
                     ('BACKGROUND', (0, i), (-1, i), colors.HexColor("#ffe6e6")),  # Fondo rojito claro para equipo seleccionado
                     ('LINEBELOW', (0, i), (-1, i), 0.5, color_header),
-                ])
+                ]
+                
+                # Solo aplicar RIGHTPADDING reducido si es número de 3 cifras con decimal
+                if es_numero_3_cifras_decimal:
+                    estilos_equipo.append(('RIGHTPADDING', (0, i), (0, i), 2))  # Reducir espacio solo para 3 cifras con decimal
+                
+                estilos.extend(estilos_equipo)
             else:
                 # Filas zebra CONSISTENTE con rankings individuales: fila par -> gris claro, fila impar -> blanco
                 if i % 2 == 0:  # Filas pares (2,4,6...) -> gris claro (consistente con rankings individuales)
@@ -1164,14 +1270,15 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
         # Añadir filas de equipos
         for i, (_, row) in enumerate(df_sorted.iterrows()):
             equipo_nombre = row['Equipo']
+            equipo_nombre_normalizado = normalizar_nombre_equipo(equipo_nombre)  # ✅ APLICAR NORMALIZACIÓN
             valor = row[columna]
             posicion = i + 1  # Posición en el ranking (1º, 2º, 3º, etc.)
             
             # Crear nombre con ranking en negrita
             ranking_bold = f"<b>{posicion}º</b>"
-            nombre_acortado = acortar_nombre(equipo_nombre, 22)  # Acortamos solo el nombre del equipo
+            nombre_acortado = acortar_nombre(equipo_nombre_normalizado, 22)  # ✅ USAR NOMBRE NORMALIZADO
             nombre_mostrar = f"{ranking_bold} {nombre_acortado}"
-            es_nuestro = equipo_nombre == equipo_seleccionado
+            es_nuestro = equipo_nombre == equipo_seleccionado  # ✅ COMPARAR CON NOMBRE ORIGINAL
             
             # Formatear número en negrita
             if columna in ['FG%', 'FG3%', 'FT%', 'Win%']:
@@ -1193,9 +1300,9 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
             if es_nuestro:
                 color_texto = color_header
                 nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
-                                            alignment=0, fontName='Helvetica-Bold', leading=13)
+                                            alignment=0, fontName='Helvetica-Bold', leading=11)  # Reducido de 13 a 11
                 valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
-                                        alignment=2, fontName='Helvetica', leading=13)  # Permite HTML para negrita
+                                        alignment=2, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
             else:
                 nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
                                             alignment=0, fontName='Helvetica', leading=12)  # Permite HTML
@@ -1226,8 +1333,8 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
             ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 1), (-1, -1), 8),
             ('RIGHTPADDING', (0, 1), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+            ('TOPPADDING', (0, 1), (-1, -1), 5),    # ✅ SEGUNDA PÁGINA: Aumentado de 3 a 5 para mejor espaciado
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 5), # ✅ SEGUNDA PÁGINA: Aumentado de 3 a 5 para mejor espaciado
             
             # Bordes
             ('BOX', (0, 0), (-1, -1), 1, color_header),
@@ -1237,11 +1344,24 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
         # Alternar colores de fondo para las filas y colores para equipo seleccionado
         for i, (_, row) in enumerate(df_sorted.iterrows(), 1):
             equipo_nombre = row['Equipo']
+            valor = row[columna]
+            
+            # Verificar si es número de 3 cifras con decimal (como 104.4)
+            es_numero_3_cifras_decimal = (isinstance(valor, (int, float)) and 
+                                        valor >= 100 and valor < 1000 and 
+                                        valor != int(valor))  # Tiene decimal
+            
             if equipo_nombre == equipo_seleccionado:
-                estilos.extend([
+                estilos_equipo = [
                     ('BACKGROUND', (0, i), (-1, i), colors.HexColor("#ffe6e6")),  # Fondo rojito claro para equipo seleccionado
                     ('LINEBELOW', (0, i), (-1, i), 0.5, color_header),
-                ])
+                ]
+                
+                # Solo aplicar RIGHTPADDING reducido si es número de 3 cifras con decimal
+                if es_numero_3_cifras_decimal:
+                    estilos_equipo.append(('RIGHTPADDING', (0, i), (0, i), 2))  # Reducir espacio solo para 3 cifras con decimal
+                
+                estilos.extend(estilos_equipo)
             else:
                 # Filas zebra CONSISTENTE con rankings individuales: fila par -> gris claro, fila impar -> blanco
                 if i % 2 == 0:  # Filas pares (2,4,6...) -> gris claro (consistente con rankings individuales)
@@ -1562,8 +1682,8 @@ def crear_pagina_rankings(story, rankings, styles, equipo_url=None, df_resultado
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#4a5568')),  # Fondo gris
-            ('TOPPADDING', (0, 0), (-1, 0), 14),   # Reducido de 16 a 14
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 14), # Reducido de 16 a 14
+            ('TOPPADDING', (0, 0), (-1, 0), 8),   # Reducido de 14 a 8 para menor altura
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8), # Reducido de 14 a 8 para menor altura
             
             # Contenido
             ('VALIGN', (0, 1), (-1, -1), 'TOP'),
@@ -2425,14 +2545,16 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         # Añadir filas de equipos
         for i, (_, row) in enumerate(df_sorted.iterrows()):
             equipo_nombre = row['Equipo']
+            equipo_nombre_normalizado = normalizar_nombre_equipo(equipo_nombre)  # ✅ APLICAR NORMALIZACIÓN
             valor = row[columna]
             ranking_pos = i + 1  # Posición en el ranking (1, 2, 3, etc.)
             
-            nombre_mostrar = acortar_nombre(equipo_nombre, 24)
-            es_nuestro = equipo_nombre == nombre_equipo
+            nombre_mostrar = acortar_nombre(equipo_nombre_normalizado, 24)  # ✅ USAR NOMBRE NORMALIZADO
+            es_nuestro = equipo_nombre == nombre_equipo  # ✅ COMPARAR CON NOMBRE ORIGINAL
             
-            # Formatear número con bold
-            valor_texto = f"<b>{int(valor)}</b>" if valor == int(valor) else f"<b>{valor:.1f}</b>"
+            # Formatear número usando la función anti-salto de línea
+            valor_formateado = formatear_numero_sin_salto(valor)
+            valor_texto = f"<b>{valor_formateado}</b>"
             
             # Formatear nombre con ranking en bold - NOMBRE DEL EQUIPO SELECCIONADO EN NEGRITA
             if es_nuestro:
@@ -2446,9 +2568,9 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             if es_nuestro:
                 color_texto = color_header
                 nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
-                                            alignment=0, fontName='Helvetica', leading=13)  # Cambiado a Helvetica normal
+                                            alignment=0, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
                 valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
-                                        alignment=2, fontName='Helvetica', leading=13)  # Cambiado a Helvetica normal
+                                        alignment=2, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
             else:
                 nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
                                             alignment=0, fontName='Helvetica', leading=12)  # Cambiado a Helvetica normal
@@ -2461,6 +2583,7 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             ])
         
         # Crear tabla con diseño mejorado - Más espacio para ranking
+        # 📏 COMPARATIVA: Altura automática con mejor espaciado interno
         tabla = Table(datos_ranking, colWidths=[1.6*inch, 0.6*inch], rowHeights=None, splitByRow=True)
         
         # Estilos con colores consistentes
@@ -2479,8 +2602,8 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 1), (-1, -1), 8),
             ('RIGHTPADDING', (0, 1), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 4),
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 4),
+            ('TOPPADDING', (0, 1), (-1, -1), 5),    # ✅ COMPARATIVA: Reducido de 8 a 5 para coincidir con Rankings
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 5), # ✅ COMPARATIVA: Reducido de 8 a 5 para coincidir con Rankings
             
             # Bordes
             ('BOX', (0, 0), (-1, -1), 1, color_header),
@@ -2490,11 +2613,24 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         # Alternar colores de fondo para las filas y colores para equipo seleccionado
         for i, (_, row) in enumerate(df_sorted.iterrows(), 1):
             equipo_nombre = row['Equipo']
+            valor = row[columna]
+            
+            # Verificar si es número de 3 cifras con decimal (como 104.4)
+            es_numero_3_cifras_decimal = (isinstance(valor, (int, float)) and 
+                                        valor >= 100 and valor < 1000 and 
+                                        valor != int(valor))  # Tiene decimal
+            
             if equipo_nombre == nombre_equipo:
-                estilos.extend([
+                estilos_equipo = [
                     ('BACKGROUND', (0, i), (-1, i), colors.HexColor("#ffe6e6")),  # Fondo rojito claro para equipo seleccionado
                     ('LINEBELOW', (0, i), (-1, i), 0.5, color_header),
-                ])
+                ]
+                
+                # Solo aplicar RIGHTPADDING reducido si es número de 3 cifras con decimal
+                if es_numero_3_cifras_decimal:
+                    estilos_equipo.append(('RIGHTPADDING', (0, i), (0, i), 2))  # Reducir espacio solo para 3 cifras con decimal
+                
+                estilos.extend(estilos_equipo)
             else:
                 if i % 2 == 0:
                     estilos.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor("#f8f9fa")))
@@ -2567,7 +2703,7 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     layout_landscape = Table(layout_landscape_data, 
                            colWidths=[2.3*inch, 0.4*inch, 2.3*inch, 0.4*inch, 2.3*inch, 0.4*inch, 2.0*inch])  # Aumentado última columna de 1.8 a 2.0
     layout_landscape.setStyle(TableStyle([
-        ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),  # ✅ CENTRAR VERTICALMENTE: Cambiar de 'TOP' a 'MIDDLE' para alinear cajas con tablas
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
     ]))
     
@@ -3640,8 +3776,8 @@ def crear_pagina_analisis_equipo(story, df_principales, titulo_style, styles):
         ('BACKGROUND', (2, 0), (2, 0), colors.HexColor('#f7fafc')),  # Fondo jugador 3
         ('LEFTPADDING', (0, 0), (-1, -1), 12),
         ('RIGHTPADDING', (0, 0), (-1, -1), 12),
-        ('TOPPADDING', (0, 0), (-1, -1), 15),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 15),
+        ('TOPPADDING', (0, 0), (-1, -1), 8),    # Reducido de 15 a 8 para menor altura
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 8), # Reducido de 15 a 8 para menor altura
     ]))
     
     story.append(tabla_principal)

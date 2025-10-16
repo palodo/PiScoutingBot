@@ -1,0 +1,1020 @@
+{
+  "equipos": [
+    {
+      "nombre_original": "ADC BOADILLA",
+      "nombre_normalizado": "ADC BOADILLA"
+    },
+    {
+      "nombre_original": "ADESAVI A",
+      "nombre_normalizado": "ADESAVI A"
+    },
+    {
+      "nombre_original": "AIRCARGOBOOKING OURENSE",
+      "nombre_normalizado": "CB OURENSE"
+    },
+    {
+      "nombre_original": "ALFINDÉN CB",
+      "nombre_normalizado": "ALFINDÉN CB"
+    },
+    {
+      "nombre_original": "ALIMERKA OVIEDO BALONCESTO",
+      "nombre_normalizado": "OVIEDO BALONCESTO"
+    },
+    {
+      "nombre_original": "AMICS CASTELLÓ",
+      "nombre_normalizado": "AMICS CASTELLÓ"
+    },
+    {
+      "nombre_original": "AMICS CASTELLÓ B",
+      "nombre_normalizado": "AMICS CASTELLÓ B"
+    },
+    {
+      "nombre_original": "ANAGÁN – EL OLIVAR",
+      "nombre_normalizado": "ANAGÁN EL OLIVAR"
+    },
+    {
+      "nombre_original": "ATICA SEVILLA CB CORIA",
+      "nombre_normalizado": "CB CORIA"
+    },
+    {
+      "nombre_original": "AUTOCARES RODRÍGUEZ",
+      "nombre_normalizado": "CB RODRÍGUEZ"
+    },
+    {
+      "nombre_original": "AZULEJOS MONCAYO CBZ",
+      "nombre_normalizado": "CBZ MONCAYO"
+    },
+    {
+      "nombre_original": "BALONCESTO ALCALA",
+      "nombre_normalizado": "BALONCESTO ALCALÁ"
+    },
+    {
+      "nombre_original": "BALONCESTO TALAVERA",
+      "nombre_normalizado": "BALONCESTO TALAVERA"
+    },
+    {
+      "nombre_original": "BALONCESTO TELDE",
+      "nombre_normalizado": "BALONCESTO TELDE"
+    },
+    {
+      "nombre_original": "BARÇA",
+      "nombre_normalizado": "BARÇA"
+    },
+    {
+      "nombre_original": "BASKONIA",
+      "nombre_normalizado": "BASKONIA"
+    },
+    {
+      "nombre_original": "BAUBLOCK GYMNÁSTICA",
+      "nombre_normalizado": "GYMNÁSTICA"
+    },
+    {
+      "nombre_original": "BC PEÑÍSCOLA",
+      "nombre_normalizado": "BC PEÑÍSCOLA"
+    },
+    {
+      "nombre_original": "BIELE ISB",
+      "nombre_normalizado": "BIELE ISB"
+    },
+    {
+      "nombre_original": "BLENDIO",
+      "nombre_normalizado": "BLENDIO"
+    },
+    {
+      "nombre_original": "BOSCO MÉRIDA PATRIMONIO DE LA HUMANIDAD",
+      "nombre_normalizado": "BOSCO MÉRIDA"
+    },
+    {
+      "nombre_original": "BUENO ARENAS ALBACETE BASKET",
+      "nombre_normalizado": "ALBACETE BASKET"
+    },
+    {
+      "nombre_original": "BYSPANIA TÍJOLA",
+      "nombre_normalizado": "BYSPANIA TÍJOLA"
+    },
+    {
+      "nombre_original": "C B SANTFELIUENC",
+      "nombre_normalizado": "CB SANTFELIUENC"
+    },
+    {
+      "nombre_original": "C. D. MENSAJERO ISLA DE LA PALMA",
+      "nombre_normalizado": "CD ISLA LA PALMA"
+    },
+    {
+      "nombre_original": "C.A. MONTEMAR",
+      "nombre_normalizado": "CA MONTEMAR"
+    },
+    {
+      "nombre_original": "C.B. CUARTE DE HUERVA",
+      "nombre_normalizado": "CB CUARTE HUERVA"
+    },
+    {
+      "nombre_original": "C.B. ESPARREGUERA",
+      "nombre_normalizado": "CB ESPARREGUERA"
+    },
+    {
+      "nombre_original": "C.B. ESTUDIANTES CARTAGENA",
+      "nombre_normalizado": "EST. CARTAGENA"
+    },
+    {
+      "nombre_original": "C.B. GETAFE",
+      "nombre_normalizado": "CB GETAFE"
+    },
+    {
+      "nombre_original": "C.B. GRANOLLERS",
+      "nombre_normalizado": "CB GRANOLLERS"
+    },
+    {
+      "nombre_original": "C.B. GRANOLLERS-PISOS.COM",
+      "nombre_normalizado": "CB GRANOLLERS"
+    },
+    {
+      "nombre_original": "C.B. JORGE JUAN CASTELLÓ SINCE 1907",
+      "nombre_normalizado": "CB JORGE JUAN"
+    },
+    {
+      "nombre_original": "C.B. JORGE JUAN TÁRTAROS GONZALO CASTELLÓ",
+      "nombre_normalizado": "CB JORGE JUAN"
+    },
+    {
+      "nombre_original": "C.B. NATURAVIA MORÓN",
+      "nombre_normalizado": "CB MORÓN"
+    },
+    {
+      "nombre_original": "C.B. NAVIA LA MAGAYA",
+      "nombre_normalizado": "CB NAVIA"
+    },
+    {
+      "nombre_original": "C.B. PRAT",
+      "nombre_normalizado": "CB PRAT"
+    },
+    {
+      "nombre_original": "C.B. PUERTO SAGUNTO",
+      "nombre_normalizado": "CB PUERTO SAGUNTO"
+    },
+    {
+      "nombre_original": "C.B. STARLABS MORÓN",
+      "nombre_normalizado": "CB MORÓN"
+    },
+    {
+      "nombre_original": "C.B. TRES CANTOS",
+      "nombre_normalizado": "CB TRES CANTOS"
+    },
+    {
+      "nombre_original": "C.B. VALSEQUILLO",
+      "nombre_normalizado": "CB VALSEQUILLO"
+    },
+    {
+      "nombre_original": "C.B. VIC - UNIVERSITAT DE VIC",
+      "nombre_normalizado": "CB VIC"
+    },
+    {
+      "nombre_original": "C.B. ZARAGOZA",
+      "nombre_normalizado": "CB ZARAGOZA"
+    },
+    {
+      "nombre_original": "C.B.ROSER",
+      "nombre_normalizado": "CB ROSER"
+    },
+    {
+      "nombre_original": "C.D. BASKET GLOBALCAJA QUINTANAR",
+      "nombre_normalizado": "CB QUINTANAR"
+    },
+    {
+      "nombre_original": "C.N. HELIOS",
+      "nombre_normalizado": "CN HELIOS"
+    },
+    {
+      "nombre_original": "CABEZUELO CB SOCUÉLLAMOS",
+      "nombre_normalizado": "CB SOCUÉLLAMOS"
+    },
+    {
+      "nombre_original": "CACERES PATRIMONIO DE LA HUMANIDAD",
+      "nombre_normalizado": "CÁCERES"
+    },
+    {
+      "nombre_original": "CAJA RURAL CB ZAMORA",
+      "nombre_normalizado": "CB ZAMORA"
+    },
+    {
+      "nombre_original": "CAJA RURAL DE ZAMORA CBCV BOECILLO",
+      "nombre_normalizado": "CBCV BOECILLO"
+    },
+    {
+      "nombre_original": "CAJA RURAL RDL",
+      "nombre_normalizado": "RDL"
+    },
+    {
+      "nombre_original": "CAJA RURAL REAL VALLADOLID BALONCESTO",
+      "nombre_normalizado": "REAL VALLADOLID"
+    },
+    {
+      "nombre_original": "CALVO BASKET XIRIA",
+      "nombre_normalizado": "BASKET XIRIA"
+    },
+    {
+      "nombre_original": "CASTILLO DE GORRAIZ VALLE DE EGÜES",
+      "nombre_normalizado": "VALLE EGÜES"
+    },
+    {
+      "nombre_original": "CB ANDRATX",
+      "nombre_normalizado": "CB ANDRATX"
+    },
+    {
+      "nombre_original": "CB ARIDANE",
+      "nombre_normalizado": "CB ARIDANE"
+    },
+    {
+      "nombre_original": "CB BOET MATARÓ",
+      "nombre_normalizado": "CB BOET MATARÓ"
+    },
+    {
+      "nombre_original": "CB JOVENS ALMÀSSERA",
+      "nombre_normalizado": "CB JOVENS"
+    },
+    {
+      "nombre_original": "CB LA MATANZA",
+      "nombre_normalizado": "CB LA MATANZA"
+    },
+    {
+      "nombre_original": "CB L´HORTA GODELLA",
+      "nombre_normalizado": "CB L'HORTA GODELLA"
+    },
+    {
+      "nombre_original": "CB MORVEDRE",
+      "nombre_normalizado": "CB MORVEDRE"
+    },
+    {
+      "nombre_original": "CB NAVÀS VISCOLA",
+      "nombre_normalizado": "CB NAVÀS"
+    },
+    {
+      "nombre_original": "CB NOVASCHOOL RINCÓN DE LA VICTORIA",
+      "nombre_normalizado": "CB RINCÓN VICTORIA"
+    },
+    {
+      "nombre_original": "CB QUART GRUES CRUZ",
+      "nombre_normalizado": "CB QUART"
+    },
+    {
+      "nombre_original": "CB SALLIVER FUENGIROLA HIGUERÓN HOTEL",
+      "nombre_normalizado": "CB FUENGIROLA"
+    },
+    {
+      "nombre_original": "CB TABERNES BLANQUES - FERNANDO GIL",
+      "nombre_normalizado": "CB TABERNES BLANQUES"
+    },
+    {
+      "nombre_original": "CB VALLS TALLERS PABLO MARTÍNEZ",
+      "nombre_normalizado": "CB VALLS"
+    },
+    {
+      "nombre_original": "CB. CORNELLÀ",
+      "nombre_normalizado": "CB CORNELLÀ"
+    },
+    {
+      "nombre_original": "CBA SPAIN",
+      "nombre_normalizado": "CBA SPAIN"
+    },
+    {
+      "nombre_original": "CBI ELCHE",
+      "nombre_normalizado": "CBI ELCHE"
+    },
+    {
+      "nombre_original": "CBI ELCHE X MAXIWATT",
+      "nombre_normalizado": "CBI ELCHE"
+    },
+    {
+      "nombre_original": "CEMALU ALDAIA",
+      "nombre_normalizado": "CB ALDAIA"
+    },
+    {
+      "nombre_original": "CESUR DISTRITO OLIMPICO",
+      "nombre_normalizado": "DISTRITO OLÍMPICO"
+    },
+    {
+      "nombre_original": "CITY OF BADAJOZ ACADEMY",
+      "nombre_normalizado": "BADAJOZ ACADEMY"
+    },
+    {
+      "nombre_original": "CIUDAD DE HUELVA EMERITA RESOURCES",
+      "nombre_normalizado": "CIUDAD DE HUELVA"
+    },
+    {
+      "nombre_original": "CIUDAD MOLINA BASKET",
+      "nombre_normalizado": "CIUDAD MOLINA"
+    },
+    {
+      "nombre_original": "CLASS BASQUET SANT ANTONI",
+      "nombre_normalizado": "BASQUET SANT ANTONI"
+    },
+    {
+      "nombre_original": "CLUB BALONCESTO SAN FERNANDO",
+      "nombre_normalizado": "CB SAN FERNANDO"
+    },
+    {
+      "nombre_original": "CLUB BALONCESTO TOLEDO BASKET",
+      "nombre_normalizado": "CB TOLEDO"
+    },
+    {
+      "nombre_original": "CLUB BÀSQUET SUECA VIDRIOLA INMOBLES",
+      "nombre_normalizado": "BÀSQUET SUECA"
+    },
+    {
+      "nombre_original": "CLUB ESPORTIU BÀSQUET LLÍRIA",
+      "nombre_normalizado": "BÀSQUET LLÍRIA"
+    },
+    {
+      "nombre_original": "CLUB OURENSE BALONCESTO",
+      "nombre_normalizado": "OURENSE BALONCESTO"
+    },
+    {
+      "nombre_original": "CLÍNICA PONFERRADA SDP",
+      "nombre_normalizado": "PONFERRADA SDP"
+    },
+    {
+      "nombre_original": "CMG HIDRÁULICA NB TORRENT",
+      "nombre_normalizado": "NB TORRENT"
+    },
+    {
+      "nombre_original": "COLEGIO EL PINAR",
+      "nombre_normalizado": "COLEGIO EL PINAR"
+    },
+    {
+      "nombre_original": "CONSTRUCCIONES GONZALO CRESPO PAS PIÉLAGOS",
+      "nombre_normalizado": "PAS PIÉLAGOS"
+    },
+    {
+      "nombre_original": "CONSTRUCCIONES GONZÁLO CRESPO PAS-PIÉLAGOS",
+      "nombre_normalizado": "PAS PIÉLAGOS"
+    },
+    {
+      "nombre_original": "COTO CÓRDOBA CB",
+      "nombre_normalizado": "COTO CÓRDOBA"
+    },
+    {
+      "nombre_original": "CULTURAL Y DEPORTIVA LEONESA",
+      "nombre_normalizado": "CD LEONESA"
+    },
+    {
+      "nombre_original": "CÍRCULO GIJÓN BALONCESTO",
+      "nombre_normalizado": "CÍRCULO GIJÓN"
+    },
+    {
+      "nombre_original": "CÍRCULO GIJÓN NOEGA BALONCESTO",
+      "nombre_normalizado": "CÍRCULO GIJÓN"
+    },
+    {
+      "nombre_original": "DAMEX CB ALGECIRAS",
+      "nombre_normalizado": "CB ALGECIRAS"
+    },
+    {
+      "nombre_original": "DAMEX UDEA ALGECIRAS",
+      "nombre_normalizado": "UDEA ALGECIRAS"
+    },
+    {
+      "nombre_original": "DE MORRO FINO CANTBASKET04",
+      "nombre_normalizado": "CANTBASKET04"
+    },
+    {
+      "nombre_original": "DEHESAS REUNIDAS CLIMANAVAS AGROMETAL PEÑARROYA",
+      "nombre_normalizado": "CB PEÑARROYA"
+    },
+    {
+      "nombre_original": "DENIA BASQUET",
+      "nombre_normalizado": "DENIA BASQUET"
+    },
+    {
+      "nombre_original": "DM GROUP MOLLET",
+      "nombre_normalizado": "CB MOLLET"
+    },
+    {
+      "nombre_original": "EB FELIPE ANTÓN",
+      "nombre_normalizado": "EB FELIPE ANTÓN"
+    },
+    {
+      "nombre_original": "EIFFAGE CB CIUDAD DE DOS HERMANAS",
+      "nombre_normalizado": "CB DOS HERMANAS"
+    },
+    {
+      "nombre_original": "EL PILAR- UPV",
+      "nombre_normalizado": "EL PILAR UPV"
+    },
+    {
+      "nombre_original": "EL VENTERO CBV",
+      "nombre_normalizado": "EL VENTERO"
+    },
+    {
+      "nombre_original": "ESET ONTINET",
+      "nombre_normalizado": "CB ONTINET"
+    },
+    {
+      "nombre_original": "ESPORTIU BÀSQUET VILA-REAL",
+      "nombre_normalizado": "BÀSQUET VILA-REAL"
+    },
+    {
+      "nombre_original": "ESTUDIANTES LUGO RIO DE GALICIA",
+      "nombre_normalizado": "ESTUDIANTES LUGO"
+    },
+    {
+      "nombre_original": "FIBWI BÀSQUET CIUTAT D'INCA",
+      "nombre_normalizado": "BÀSQUET INCA"
+    },
+    {
+      "nombre_original": "FIBWI MALLORCA BASQUET PALMA",
+      "nombre_normalizado": "BASQUET PALMA"
+    },
+    {
+      "nombre_original": "FIBWI PALMA",
+      "nombre_normalizado": "FIBWI PALMA"
+    },
+    {
+      "nombre_original": "FITOSUR B. MURGI",
+      "nombre_normalizado": "B. MURGI"
+    },
+    {
+      "nombre_original": "FLANIGAN CALVIÀ",
+      "nombre_normalizado": "CB CALVIÀ"
+    },
+    {
+      "nombre_original": "FLEXICAR FUENLABRADA",
+      "nombre_normalizado": "CB FUENLABRADA"
+    },
+    {
+      "nombre_original": "FRIVALCA LA MUELA",
+      "nombre_normalizado": "CB LA MUELA"
+    },
+    {
+      "nombre_original": "FUNDACION GLOBALCAJA LA RODA",
+      "nombre_normalizado": "CB LA RODA"
+    },
+    {
+      "nombre_original": "FUNDACIÓ CAIXA RURAL VILA-REAL",
+      "nombre_normalizado": "VILA-REAL"
+    },
+    {
+      "nombre_original": "FUNDACIÓN BILBAO BASKET FUNDAZIOA",
+      "nombre_normalizado": "BILBAO BASKET"
+    },
+    {
+      "nombre_original": "FUNDACIÓN CB CANARIAS",
+      "nombre_normalizado": "CB CANARIAS"
+    },
+    {
+      "nombre_original": "GLOBAL REAL ESTATE CB SALT",
+      "nombre_normalizado": "CB SALT"
+    },
+    {
+      "nombre_original": "GOLF DE ANDRATX",
+      "nombre_normalizado": "GOLF ANDRATX"
+    },
+    {
+      "nombre_original": "GRAN CANARIA",
+      "nombre_normalizado": "GRAN CANARIA"
+    },
+    {
+      "nombre_original": "GRUPO ALEGA CANTABRIA",
+      "nombre_normalizado": "CB CANTABRIA"
+    },
+    {
+      "nombre_original": "GRUPO CAESA SEGUROS FC CARTAGENA CB",
+      "nombre_normalizado": "FC CARTAGENA CB"
+    },
+    {
+      "nombre_original": "GRUPO DE SANTIAGO",
+      "nombre_normalizado": "GRUPO SANTIAGO"
+    },
+    {
+      "nombre_original": "GRUPO EGIDO PINTOBASKET",
+      "nombre_normalizado": "PINTOBASKET"
+    },
+    {
+      "nombre_original": "GRUPO INMAPA FILIPENSES",
+      "nombre_normalizado": "FILIPENSES"
+    },
+    {
+      "nombre_original": "GRUPO INTERBUS ALCOBENDAS",
+      "nombre_normalizado": "CB ALCOBENDAS"
+    },
+    {
+      "nombre_original": "GRUPO JORGE BALONCESTO ZUERA",
+      "nombre_normalizado": "BALONCESTO ZUERA"
+    },
+    {
+      "nombre_original": "GRUPO URETA TIZONA BURGOS",
+      "nombre_normalizado": "TIZONA BURGOS"
+    },
+    {
+      "nombre_original": "HACHE PUBLICIDAD MORALEJA",
+      "nombre_normalizado": "CB MORALEJA"
+    },
+    {
+      "nombre_original": "HALAL FOOD QUALITY UIXÓ BÀSQUET",
+      "nombre_normalizado": "UIXÓ BÀSQUET"
+    },
+    {
+      "nombre_original": "HESTIA MENORCA",
+      "nombre_normalizado": "CB MENORCA"
+    },
+    {
+      "nombre_original": "HLA ALICANTE",
+      "nombre_normalizado": "HLA ALICANTE"
+    },
+    {
+      "nombre_original": "HOMS  U.E.MATARÓ",
+      "nombre_normalizado": "UE MATARÓ"
+    },
+    {
+      "nombre_original": "HOMS U.E.MATARÓ",
+      "nombre_normalizado": "UE MATARÓ"
+    },
+    {
+      "nombre_original": "HOSPITAL OCHOA CB MARBELLA",
+      "nombre_normalizado": "CB MARBELLA"
+    },
+    {
+      "nombre_original": "HOTEL 4POSTES - ÁVILA AUTÉNTICA - EL BULEVAR",
+      "nombre_normalizado": "CB ÁVILA"
+    },
+    {
+      "nombre_original": "HUELVA COMERCIO LRI21 - VIRIDIS",
+      "nombre_normalizado": "CB HUELVA"
+    },
+    {
+      "nombre_original": "HUELVA COMERCIO VIRIDIS",
+      "nombre_normalizado": "CB HUELVA"
+    },
+    {
+      "nombre_original": "IBERSOL CB TARRAGONA",
+      "nombre_normalizado": "CB TARRAGONA"
+    },
+    {
+      "nombre_original": "IMMO SA MARINA CIUTAT D'INCA BASQUET",
+      "nombre_normalizado": "CIUTAT D'INCA"
+    },
+    {
+      "nombre_original": "INELTRON SANTO DOMINGO BETANZOS",
+      "nombre_normalizado": "SD BETANZOS"
+    },
+    {
+      "nombre_original": "INMOBILIARIA GÁLVEZ SANTA CRUZ",
+      "nombre_normalizado": "CB SANTA CRUZ"
+    },
+    {
+      "nombre_original": "INSOLAC CAJA 87",
+      "nombre_normalizado": "CAJA 87"
+    },
+    {
+      "nombre_original": "INSOLAC CB ALCALÁ CAJA87",
+      "nombre_normalizado": "CB ALCALÁ"
+    },
+    {
+      "nombre_original": "INVEREADY GIPUZKOA",
+      "nombre_normalizado": "CB GIPUZKOA"
+    },
+    {
+      "nombre_original": "IRUKI TAKE",
+      "nombre_normalizado": "IRUKI TAKE"
+    },
+    {
+      "nombre_original": "JAC SANTS BARCELONA",
+      "nombre_normalizado": "JAC SANTS"
+    },
+    {
+      "nombre_original": "JAEN PARAISO INTERIOR - SKA LOGISTIK C.B. ANDÚJAR",
+      "nombre_normalizado": "CB ANDÚJAR"
+    },
+    {
+      "nombre_original": "JAEN PARAISO INTERIOR FS",
+      "nombre_normalizado": "JAÉN FS"
+    },
+    {
+      "nombre_original": "JAEN PARAÍSO INTERIOR CB",
+      "nombre_normalizado": "CB JAÉN"
+    },
+    {
+      "nombre_original": "JOVENS L'ELIANA",
+      "nombre_normalizado": "JOVENS L'ELIANA"
+    },
+    {
+      "nombre_original": "JOVENTUT BADALONA",
+      "nombre_normalizado": "JOVENTUT BADALONA"
+    },
+    {
+      "nombre_original": "KLINIK · PM CAROLINAS",
+      "nombre_normalizado": "PM CAROLINAS"
+    },
+    {
+      "nombre_original": "LA SALUD ARCHENA",
+      "nombre_normalizado": "CB ARCHENA"
+    },
+    {
+      "nombre_original": "LBC COCINAS.COM",
+      "nombre_normalizado": "LBC"
+    },
+    {
+      "nombre_original": "LETRA CORPOREA BARBASTRO",
+      "nombre_normalizado": "CB BARBASTRO"
+    },
+    {
+      "nombre_original": "LEYMA CORUÑA",
+      "nombre_normalizado": "LEYMA CORUÑA"
+    },
+    {
+      "nombre_original": "LITHIUM IBERIA SAGRADO",
+      "nombre_normalizado": "SAGRADO"
+    },
+    {
+      "nombre_original": "LOBE HUESCA LA MAGIA",
+      "nombre_normalizado": "LOBE HUESCA"
+    },
+    {
+      "nombre_original": "LOGROBASKET LOGI7",
+      "nombre_normalizado": "LOGROBASKET"
+    },
+    {
+      "nombre_original": "LUCENTUM ALICANTE",
+      "nombre_normalizado": "LUCENTUM ALICANTE"
+    },
+    {
+      "nombre_original": "LUJISA GUADALAJARA BASKET",
+      "nombre_normalizado": "GUADALAJARA BASKET"
+    },
+    {
+      "nombre_original": "MADERAS SORLI BENICARLO",
+      "nombre_normalizado": "CB BENICARLO"
+    },
+    {
+      "nombre_original": "MARISTAS VALENCIA",
+      "nombre_normalizado": "MARISTAS VALENCIA"
+    },
+    {
+      "nombre_original": "MATARÓ PARC BOET",
+      "nombre_normalizado": "MATARÓ PARC BOET"
+    },
+    {
+      "nombre_original": "MEGACALZADO ARDOI",
+      "nombre_normalizado": "CB ARDOI"
+    },
+    {
+      "nombre_original": "MELILLA CIUDAD DEL DEPORTE",
+      "nombre_normalizado": "MELILLA BALONCESTO"
+    },
+    {
+      "nombre_original": "MELILLA CIUDAD DEL DEPORTE ENRIQUE SOLER",
+      "nombre_normalizado": "MELILLA BALONCESTO"
+    },
+    {
+      "nombre_original": "MOLINA OLEA CB COSTA MOTRIL",
+      "nombre_normalizado": "CB COSTA MOTRIL"
+    },
+    {
+      "nombre_original": "MONBUS - CB IGUALADA",
+      "nombre_normalizado": "CB IGUALADA"
+    },
+    {
+      "nombre_original": "MONBUS OBRADOIRO",
+      "nombre_normalizado": "OBRADOIRO"
+    },
+    {
+      "nombre_original": "MONDRAGON UNIBERTSITATEA",
+      "nombre_normalizado": "MONDRAGON"
+    },
+    {
+      "nombre_original": "MOTOR MUNICH CADÍ MANRESA",
+      "nombre_normalizado": "CADÍ MANRESA"
+    },
+    {
+      "nombre_original": "MOVISTAR ESTUDIANTES",
+      "nombre_normalizado": "ESTUDIANTES"
+    },
+    {
+      "nombre_original": "NADUNET REFITEL BÀSQUET LLÍRIA",
+      "nombre_normalizado": "BÀSQUET LLÍRIA"
+    },
+    {
+      "nombre_original": "NB TORRENT",
+      "nombre_normalizado": "NB TORRENT"
+    },
+    {
+      "nombre_original": "NÁUTICO TENERIFE",
+      "nombre_normalizado": "NÁUTICO TENERIFE"
+    },
+    {
+      "nombre_original": "OBRADOIRO AMES",
+      "nombre_normalizado": "OBRADOIRO AMES"
+    },
+    {
+      "nombre_original": "OCA GLOBAL - CBSALOU",
+      "nombre_normalizado": "CB SALOU"
+    },
+    {
+      "nombre_original": "OCA GLOBAL C.B. SALOU",
+      "nombre_normalizado": "CB SALOU"
+    },
+    {
+      "nombre_original": "ODILO FC CARTAGENA CB",
+      "nombre_normalizado": "FC CARTAGENA CB"
+    },
+    {
+      "nombre_original": "OH!TELS ULB",
+      "nombre_normalizado": "ULB"
+    },
+    {
+      "nombre_original": "OPOSITA MARÍN ENCE PEIXEGALEGO",
+      "nombre_normalizado": "MARÍN PEIXEGALEGO"
+    },
+    {
+      "nombre_original": "PABLO LASO ACADEMY",
+      "nombre_normalizado": "PABLO LASO ACADEMY"
+    },
+    {
+      "nombre_original": "PALMER BASKET MALLORCA PALMA",
+      "nombre_normalizado": "BASKET PALMA"
+    },
+    {
+      "nombre_original": "PBB GODOY MACEIRA",
+      "nombre_normalizado": "PBB GODOY MACEIRA"
+    },
+    {
+      "nombre_original": "PERFUMERIAS AVENIDA XOBORG",
+      "nombre_normalizado": "PERFUMERÍAS AVENIDA"
+    },
+    {
+      "nombre_original": "PERFUMERÍAS AVENIDA XOBORG",
+      "nombre_normalizado": "PERFUMERÍAS AVENIDA"
+    },
+    {
+      "nombre_original": "PERSONALHOME ADESAVI",
+      "nombre_normalizado": "ADESAVI"
+    },
+    {
+      "nombre_original": "PICKEN CLARET",
+      "nombre_normalizado": "PICKEN CLARET"
+    },
+    {
+      "nombre_original": "PROBASKETLAB FUENLABRADA",
+      "nombre_normalizado": "CB FUENLABRADA"
+    },
+    {
+      "nombre_original": "PROINBENI UPB GANDIA",
+      "nombre_normalizado": "UPB GANDIA"
+    },
+    {
+      "nombre_original": "PUJOL MOLLERUSSA",
+      "nombre_normalizado": "CB MOLLERUSSA"
+    },
+    {
+      "nombre_original": "REAL BETIS BALONCESTO",
+      "nombre_normalizado": "REAL BETIS"
+    },
+    {
+      "nombre_original": "REAL CANOE N.C.",
+      "nombre_normalizado": "REAL CANOE"
+    },
+    {
+      "nombre_original": "REAL MADRID",
+      "nombre_normalizado": "REAL MADRID"
+    },
+    {
+      "nombre_original": "REAL MURCIA BALONCESTO",
+      "nombre_normalizado": "REAL MURCIA"
+    },
+    {
+      "nombre_original": "RECOLETAS SALUD CARBAJOSA",
+      "nombre_normalizado": "CARBAJOSA"
+    },
+    {
+      "nombre_original": "RECUCYM BAZU",
+      "nombre_normalizado": "RECUCYM BAZU"
+    },
+    {
+      "nombre_original": "REENTAL ALJARAQUE",
+      "nombre_normalizado": "CB ALJARAQUE"
+    },
+    {
+      "nombre_original": "REINA PROTEÍNAS CLAVIJO",
+      "nombre_normalizado": "CB CLAVIJO"
+    },
+    {
+      "nombre_original": "RESTAURANTE LOS ARCOS CB SOLARES",
+      "nombre_normalizado": "CB SOLARES"
+    },
+    {
+      "nombre_original": "RICASA GODELLA",
+      "nombre_normalizado": "CB GODELLA"
+    },
+    {
+      "nombre_original": "RIGALLI ALGINET",
+      "nombre_normalizado": "RIGALLI ALGINET"
+    },
+    {
+      "nombre_original": "RIGALLI-ALGINET",
+      "nombre_normalizado": "RIGALLI ALGINET"
+    },
+    {
+      "nombre_original": "RIOVERDE CLAVIJO",
+      "nombre_normalizado": "RIOVERDE CLAVIJO"
+    },
+    {
+      "nombre_original": "SA REAL INSTALACIONES AREVALO IBIZA",
+      "nombre_normalizado": "CB IBIZA"
+    },
+    {
+      "nombre_original": "SA TINTINA CB ES CASTELL",
+      "nombre_normalizado": "CB ES CASTELL"
+    },
+    {
+      "nombre_original": "SA TINTINA CB ES CASTELL MENORCA",
+      "nombre_normalizado": "CB ES CASTELL"
+    },
+    {
+      "nombre_original": "SAN ANTONIO CÁCERES",
+      "nombre_normalizado": "SAN ANTONIO CÁCERES"
+    },
+    {
+      "nombre_original": "SANDÁ C.B. L´HOSPITALET",
+      "nombre_normalizado": "CB L'HOSPITALET"
+    },
+    {
+      "nombre_original": "SANDÁ ELECTROCLIMA - BC TECLA SALA  A",
+      "nombre_normalizado": "BC TECLA SALA"
+    },
+    {
+      "nombre_original": "SANDÁ ELECTROCLIMA C.B. L´HOSPITALET",
+      "nombre_normalizado": "CB L'HOSPITALET"
+    },
+    {
+      "nombre_original": "SD ESPANYOL - SMARTCLÍNIC",
+      "nombre_normalizado": "SD ESPANYOL"
+    },
+    {
+      "nombre_original": "SECCIÓN DEPORTIVA ALJARAQUE",
+      "nombre_normalizado": "SD ALJARAQUE"
+    },
+    {
+      "nombre_original": "SERCOMOSA MOLINA BASKET",
+      "nombre_normalizado": "MOLINA BASKET"
+    },
+    {
+      "nombre_original": "SERVIGROUP BENIDORM",
+      "nombre_normalizado": "CB BENIDORM"
+    },
+    {
+      "nombre_original": "SESE A",
+      "nombre_normalizado": "SESE A"
+    },
+    {
+      "nombre_original": "SIGALTEC",
+      "nombre_normalizado": "SIGALTEC"
+    },
+    {
+      "nombre_original": "SILBÓ SAN PABLO BURGOS",
+      "nombre_normalizado": "SAN PABLO BURGOS"
+    },
+    {
+      "nombre_original": "SOCAGE JOVENS L'ELIANA",
+      "nombre_normalizado": "JOVENS L'ELIANA"
+    },
+    {
+      "nombre_original": "SOL GIRONÈS BISBAL BÀSQUET",
+      "nombre_normalizado": "BISBAL BÀSQUET"
+    },
+    {
+      "nombre_original": "SOLGALEO BOSCO SALESIANOS",
+      "nombre_normalizado": "BOSCO SALESIANOS"
+    },
+    {
+      "nombre_original": "SPANISH BASKETBALL ACADEMY",
+      "nombre_normalizado": "SPANISH ACADEMY"
+    },
+    {
+      "nombre_original": "SUMIALKI CB CIUDAD DE MOSTOLES",
+      "nombre_normalizado": "CB MÓSTOLES"
+    },
+    {
+      "nombre_original": "SUMIALKI CB CIUDAD DE MÓSTOLES",
+      "nombre_normalizado": "CB MÓSTOLES"
+    },
+    {
+      "nombre_original": "SUN CHLORELLA DRAGONS",
+      "nombre_normalizado": "DRAGONS"
+    },
+    {
+      "nombre_original": "SURSEEDS - B. MURGI",
+      "nombre_normalizado": "B. MURGI"
+    },
+    {
+      "nombre_original": "SÚPER AGROPAL PALENCIA",
+      "nombre_normalizado": "CB PALENCIA"
+    },
+    {
+      "nombre_original": "TABIRAKO BAQUE",
+      "nombre_normalizado": "TABIRAKO BAQUE"
+    },
+    {
+      "nombre_original": "TEKNEI BIZKAIA ZORNOTZA",
+      "nombre_normalizado": "ZORNOTZA"
+    },
+    {
+      "nombre_original": "TENEA-C.B. ESPARREGUERA",
+      "nombre_normalizado": "CB ESPARREGUERA"
+    },
+    {
+      "nombre_original": "THE FITZGERALD EL PILAR",
+      "nombre_normalizado": "EL PILAR"
+    },
+    {
+      "nombre_original": "TIBU-RON CASTELLDEFELS",
+      "nombre_normalizado": "CB CASTELLDEFELS"
+    },
+    {
+      "nombre_original": "TOBARRA CB",
+      "nombre_normalizado": "TOBARRA CB"
+    },
+    {
+      "nombre_original": "TOPSURFACE NB PATERNA",
+      "nombre_normalizado": "NB PATERNA"
+    },
+    {
+      "nombre_original": "TOSCONES CORRALEJO",
+      "nombre_normalizado": "TOSCONES CORRALEJO"
+    },
+    {
+      "nombre_original": "TQ-CB PRAT",
+      "nombre_normalizado": "CB PRAT"
+    },
+    {
+      "nombre_original": "TRANSPORTES GOBRA GÜÍMAR",
+      "nombre_normalizado": "CB GÜÍMAR"
+    },
+    {
+      "nombre_original": "TRAUMACOR CULLEREDO",
+      "nombre_normalizado": "CB CULLEREDO"
+    },
+    {
+      "nombre_original": "TU SUPER CB LA ZUBIA",
+      "nombre_normalizado": "CB LA ZUBIA"
+    },
+    {
+      "nombre_original": "UCAM MURCIA JUVER C.B.",
+      "nombre_normalizado": "UCAM MURCIA"
+    },
+    {
+      "nombre_original": "UCOGA SEGUROS C.B. CHANTADA",
+      "nombre_normalizado": "CB CHANTADA"
+    },
+    {
+      "nombre_original": "UE SANT CUGAT - OCCIDENT",
+      "nombre_normalizado": "UE SANT CUGAT"
+    },
+    {
+      "nombre_original": "UEMC BALONCESTO VALLADOLID",
+      "nombre_normalizado": "UEMC VALLADOLID"
+    },
+    {
+      "nombre_original": "UEMC REAL VALLADOLID BALONCESTO",
+      "nombre_normalizado": "REAL VALLADOLID"
+    },
+    {
+      "nombre_original": "ULACIA ZKE",
+      "nombre_normalizado": "ULACIA ZKE"
+    },
+    {
+      "nombre_original": "ULLA OIL ROSALIA",
+      "nombre_normalizado": "ULLA OIL ROSALIA"
+    },
+    {
+      "nombre_original": "UNICAJA ANDALUCÍA",
+      "nombre_normalizado": "UNICAJA"
+    },
+    {
+      "nombre_original": "UNIVERSIDAD DE OVIEDO",
+      "nombre_normalizado": "UNIVERSIDAD OVIEDO"
+    },
+    {
+      "nombre_original": "UNIVERSIDAD DEUSTO LOIOLA INDAUTXU",
+      "nombre_normalizado": "DEUSTO"
+    },
+    {
+      "nombre_original": "UROS DE RIVAS",
+      "nombre_normalizado": "UROS DE RIVAS"
+    },
+    {
+      "nombre_original": "VALENCIA B.C.",
+      "nombre_normalizado": "VALENCIA BC"
+    },
+    {
+      "nombre_original": "VELABASKET CB SUECA",
+      "nombre_normalizado": "CB SUECA"
+    },
+    {
+      "nombre_original": "VÍTALY LA MAR BCBADAJOZ",
+      "nombre_normalizado": "BC BADAJOZ"
+    },
+    {
+      "nombre_original": "ZENTRO BASKET MADRID",
+      "nombre_normalizado": "ZENTRO BASKET"
+    }
+  ]
+}
