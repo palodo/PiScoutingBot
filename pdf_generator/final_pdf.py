@@ -2913,7 +2913,10 @@ def generar_resumen_jugadores_con_openai(df_jugadores):
         # Obtener la ruta del archivo prompt_scouting.txt en el mismo directorio que este módulo
         prompt_path = Path(__file__).parent / "prompt_scouting.txt"
         with open(prompt_path, "r", encoding="utf-8") as f:
-            prompt = f.read()
+            prompt_template = f.read()
+        
+        # Combinar el template del prompt con los datos reales de los jugadores
+        prompt = f"{prompt_template}\n\nDATOS DE LOS JUGADORES:\n{json_prompt}"
 
         # Realizar la llamada a OpenAI
         response = client.chat.completions.create(
@@ -3640,8 +3643,23 @@ def crear_pagina_analisis_equipo(story, df_principales, titulo_style, styles):
     )
     
     try:
+        # Limpiar la respuesta de OpenAI (eliminar bloques de markdown si existen)
+        resumen_limpio = resumen_json.strip()
+        
+        # Si la respuesta está envuelta en ```json ... ```, extraer solo el JSON
+        if resumen_limpio.startswith('```'):
+            # Buscar el inicio y fin del bloque
+            lines = resumen_limpio.split('\n')
+            # Eliminar la primera línea (```json o ```)
+            if lines[0].startswith('```'):
+                lines = lines[1:]
+            # Eliminar la última línea si es ```
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            resumen_limpio = '\n'.join(lines)
+        
         # Intentar parsear el JSON de OpenAI
-        data = json.loads(resumen_json)
+        data = json.loads(resumen_limpio)
         jugadores_data = data.get('jugadores', [])
         
         # Si no hay 3 jugadores, usar datos de ejemplo

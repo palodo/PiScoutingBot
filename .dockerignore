@@ -1,0 +1,47 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs (optional - uncomment if you don't want to include existing logs)
+# logs/*.log
+
+# Reports (optional - uncomment if you don't want to include existing reports)
+# reportes/*
+
+# Debug files (optional)
+# debug_html/*
+
+# Environment files (IMPORTANT: never include tokens in image)
+.env
+.env.local
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+README.md

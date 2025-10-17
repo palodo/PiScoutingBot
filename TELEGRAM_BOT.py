@@ -4,6 +4,10 @@ import asyncio
 from pathlib import Path
 from typing import Dict, List, Tuple, Any
 
+# Cargar variables de entorno desde .env
+from dotenv import load_dotenv
+load_dotenv()
+
 # Configurar matplotlib para modo headless ANTES de cualquier importación
 import matplotlib
 matplotlib.use('Agg')  # Backend sin interfaz gráfica
@@ -36,7 +40,8 @@ TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+#TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
