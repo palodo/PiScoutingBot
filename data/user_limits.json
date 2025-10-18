@@ -31,6 +31,13 @@
       "max_generations": 50,
       "remaining_generations": 50,
       "name": "Pablo Castera"
+    },
+    "152873938": {
+      "authorized": true,
+      "admin": false,
+      "max_generations": 2,
+      "remaining_generations": 1,
+      "name": "User 152873938"
     }
   }
 }

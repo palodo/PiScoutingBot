@@ -7,8 +7,15 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
+import sys
 from datetime import datetime
 from requests.exceptions import ReadTimeout, ConnectionError
+
+# Configurar codificación UTF-8 para Windows
+if sys.platform == 'win32':
+    import io
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 # URLs a procesar: /1, /2, /3
 URLS = [

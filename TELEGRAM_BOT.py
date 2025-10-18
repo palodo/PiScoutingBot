@@ -40,8 +40,8 @@ TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-#TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+#TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
@@ -330,15 +330,19 @@ async def check_user_authorization(update: Update, context: ContextTypes.DEFAULT
     """Verifica solo si el usuario está en la lista autorizada"""
     user_id = update.effective_user.id
     if not is_user_authorized(user_id):
+        # Usuario no autorizado - iniciar proceso de solicitud de acceso
         await update.message.reply_text(
-            "❌ Acceso denegado. No tienes permisos para usar este bot.\n"
-            f"Tu user_id es: {user_id}"
+            "❌ Acceso denegado. No tienes permisos para usar este bot.\n\n"
+            "Para solicitar acceso, por favor indica el **nombre de tu equipo**:\n"
+            "Ejemplo: CB Estudiantes, Real Madrid, etc."
         )
+        # Cambiar a estado de solicitud de acceso
+        context.user_data["awaiting_team_name"] = True
         return False
     return True
 
 # Estados de la conversación
-ELEGIR_COMPETICION, ELEGIR_GRUPO, ELEGIR_EQUIPO, CONFIRMAR_EQUIPO = range(4)
+ELEGIR_COMPETICION, ELEGIR_GRUPO, ELEGIR_EQUIPO, CONFIRMAR_EQUIPO, SOLICITAR_ACCESO_EQUIPO = range(5)
 
 # ==========================
 # CARGA Y EXTRACCIÓN DEL JSON
@@ -520,11 +524,21 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Verificar si el usuario está en la lista autorizada
-    if not await check_user_authorization(update, context):
-        return ConversationHandler.END
+    user_id = update.effective_user.id
     
-    # Limpiar contexto y mostrar menú de categorías
+    # Verificar si el usuario está en la lista autorizada
+    if not is_user_authorized(user_id):
+        # Usuario no autorizado - iniciar proceso de solicitud de acceso
+        await update.message.reply_text(
+            "❌ Acceso denegado. No tienes permisos para usar este bot.\n\n"
+            "Para solicitar acceso, por favor indica el **nombre de tu equipo**:\n"
+            "Ejemplo: CB Estudiantes, Real Madrid, etc.",
+            parse_mode='Markdown'
+        )
+        # Cambiar al estado de solicitud de acceso
+        return SOLICITAR_ACCESO_EQUIPO
+    
+    # Usuario autorizado - Limpiar contexto y mostrar menú de categorías
     context.user_data.clear()
     return await menu_categorias(update, context)
 
@@ -853,21 +867,26 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         help_text += "**👥 Gestión de Usuarios:**\n"
         help_text += "• `/list_users` - Ver todos los usuarios\n"
         help_text += "• `/authorize_user <id> <true/false> [admin] [max] [name]`\n"
-        help_text += "  Ejemplo: `/authorize_user 123 true admin 100 Juan`\n\n"
+        help_text += "  Autorizar/desautorizar (mantiene registro)\n"
+        help_text += "  Ejemplo: `/authorize_user 123 true admin 100 Juan`\n"
+        help_text += "• `/delete_user <id>` - Eliminar usuario completamente\n"
+        help_text += "  ⚠️ Elimina todo el registro del usuario\n\n"
         
         help_text += "**📊 Gestión de Contadores:**\n"
         help_text += "• `/reset_user <id> [cantidad]` - Resetear contador\n"
         help_text += "  Ejemplo: `/reset_user 123 50`\n"
         help_text += "• `/reset_all` - Resetear todos los contadores\n\n"
         
-        help_text += "**� Gestión de Datos:**\n"
+        help_text += "**🔄 Gestión de Datos:**\n"
         help_text += "• `/run_scraper` - Ejecutar scraper multi-temporada\n"
-        help_text += "  Actualiza datos de FEB 2024 y 2025\n\n"
+        help_text += "  Actualiza datos de FEB 2024 y 2025\n"
+        help_text += "• `/run_shortchart_scraper` - Ejecutar scraper de shotcharts\n"
+        help_text += "  Actualiza datos de shotcharts de jugadores\n\n"
         
-        help_text += "**�💡 Notas de Admin:**\n"
+        help_text += "**💡 Notas de Admin:**\n"
         help_text += "• Si asignas generaciones > máximo actual, se actualiza el máximo\n"
         help_text += "• Los cambios se guardan automáticamente en el JSON\n"
-        help_text += "• El scraper puede tardar 15-45 minutos en completarse\n"
+        help_text += "• Los scrapers pueden tardar varios minutos en completarse\n"
     
     help_text += "\n**🔧 Soporte:**\n"
     help_text += "Si tienes problemas, contacta con el administrador del bot."
@@ -932,6 +951,103 @@ async def admin_authorize_user(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("❌ Error: User ID debe ser un número.")
     except Exception as e:
         await update.message.reply_text(f"❌ Error: {str(e)}")
+
+
+async def admin_delete_user(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando administrativo para eliminar completamente un usuario del registro"""
+    user_id = update.effective_user.id
+    
+    if not is_user_admin(user_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        return
+    
+    try:
+        # Formato: /delete_user <user_id>
+        args = context.args
+        if len(args) < 1:
+            await update.message.reply_text(
+                "❌ **Uso incorrecto**\n\n"
+                "Formato: `/delete_user <user_id>`\n\n"
+                "Este comando **elimina completamente** el registro del usuario.\n\n"
+                "⚠️ **Diferencias:**\n"
+                "• `/authorize_user <id> false` - Desautoriza pero mantiene el registro\n"
+                "• `/delete_user <id>` - Elimina completamente el usuario\n\n"
+                "Ejemplo:\n"
+                "• `/delete_user 123456789`",
+                parse_mode='Markdown'
+            )
+            return
+        
+        target_user_id = int(args[0])
+        
+        # Verificar que el usuario existe
+        config = load_user_config()
+        user_key = str(target_user_id)
+        
+        if user_key not in config["users"]:
+            await update.message.reply_text(
+                f"❌ **Usuario no encontrado**\n\n"
+                f"El usuario con ID `{target_user_id}` no existe en el registro.",
+                parse_mode='Markdown'
+            )
+            return
+        
+        # Obtener información del usuario antes de eliminarlo
+        user_data = config["users"][user_key]
+        user_name = user_data.get("name", f"User {target_user_id}")
+        was_authorized = user_data.get("authorized", False)
+        was_admin = user_data.get("admin", False)
+        remaining = user_data.get("remaining_generations", 0)
+        
+        # Eliminar el usuario del registro
+        del config["users"][user_key]
+        save_user_config(config)
+        
+        # Mensaje de confirmación
+        status_icon = "✅" if was_authorized else "❌"
+        role_icon = "👑" if was_admin else "👤"
+        
+        await update.message.reply_text(
+            f"🗑️ **Usuario eliminado del registro**\n\n"
+            f"**Datos eliminados:**\n"
+            f"• User ID: `{target_user_id}`\n"
+            f"• Nombre: {user_name}\n"
+            f"• Estado: {status_icon} {'Autorizado' if was_authorized else 'No autorizado'}\n"
+            f"• Rol: {role_icon} {'Admin' if was_admin else 'Usuario'}\n"
+            f"• Generaciones restantes: {remaining}\n\n"
+            f"✅ El usuario ha sido completamente eliminado del sistema.",
+            parse_mode='Markdown'
+        )
+        
+        # Log a admins si está configurado
+        if SEND_ADMIN_LOGS and ADMIN_LOG_CHAT_ID:
+            try:
+                import time
+                
+                admin_data = get_user_data(user_id)
+                admin_name = admin_data.get("name", update.effective_user.first_name or f"Admin {user_id}")
+                
+                await context.bot.send_message(
+                    chat_id=ADMIN_LOG_CHAT_ID,
+                    text=f"🗑️ **Usuario eliminado del registro**\n\n"
+                         f"👑 **Administrador:** {admin_name}\n"
+                         f"• Admin ID: `{user_id}`\n\n"
+                         f"🚫 **Usuario eliminado:**\n"
+                         f"• User ID: `{target_user_id}`\n"
+                         f"• Nombre: {user_name}\n"
+                         f"• Autorizado: {'Sí' if was_authorized else 'No'}\n"
+                         f"• Admin: {'Sí' if was_admin else 'No'}\n"
+                         f"• Timestamp: {time.strftime('%H:%M:%S - %d/%m/%Y')}",
+                    parse_mode='Markdown'
+                )
+            except:
+                pass
+        
+    except ValueError:
+        await update.message.reply_text("❌ Error: User ID debe ser un número.")
+    except Exception as e:
+        await update.message.reply_text(f"❌ Error: {str(e)}")
+
 
 async def admin_run_scraper(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando administrativo para ejecutar el scraper multi-temporada"""
@@ -1015,8 +1131,7 @@ async def run_scraper_background(
             *cmd,
             cwd=bot_dir,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            text=True
+            stderr=asyncio.subprocess.PIPE
         )
         
         # Enviar actualizaciones de progreso cada 2 minutos
@@ -1026,6 +1141,12 @@ async def run_scraper_background(
         
         # Esperar a que termine el proceso
         stdout, stderr = await process.communicate()
+        
+        # Decodificar output
+        if stdout:
+            stdout = stdout.decode('utf-8', errors='ignore')
+        if stderr:
+            stderr = stderr.decode('utf-8', errors='ignore')
         
         # Cancelar las actualizaciones de progreso
         progress_task.cancel()
@@ -1155,6 +1276,191 @@ async def send_progress_updates(context: ContextTypes.DEFAULT_TYPE, chat_id: int
     except Exception as e:
         # Error enviando updates, pero no interrumpir el scraper
         print(f"Error enviando actualizaciones de progreso: {e}")
+
+
+# ==========================
+# COMANDO PARA EJECUTAR SHORTCHART SCRAPER
+# ==========================
+
+async def admin_run_shortchart_scraper(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Comando administrativo para ejecutar el scraper de shotcharts"""
+    user_id = update.effective_user.id
+    
+    if not is_user_admin(user_id):
+        await update.message.reply_text("❌ No tienes permisos de administrador.")
+        return
+    
+    try:
+        # Obtener información del usuario admin
+        user_data = get_user_data(user_id)
+        admin_name = user_data.get("name", update.effective_user.first_name or f"Admin {user_id}")
+        
+        # Mensaje inicial de confirmación
+        await update.message.reply_text(
+            f"🎯 **Scraper de Shotcharts**\n\n"
+            f"👑 Solicitado por: {admin_name}\n"
+            f"🕒 Iniciando proceso...\n\n"
+            f"⚠️ **IMPORTANTE:**\n"
+            f"• Este proceso puede tardar varios minutos\n"
+            f"• Actualiza datos de shotcharts de jugadores\n"
+            f"• No interrumpir durante la ejecución\n\n"
+            f"📊 Te mantendré informado del progreso...",
+            parse_mode='Markdown'
+        )
+        
+        # Ejecutar scraper en background
+        asyncio.create_task(
+            run_shortchart_scraper_background(
+                chat_id=update.message.chat_id,
+                admin_user_id=user_id,
+                admin_name=admin_name,
+                context=context
+            )
+        )
+        
+    except Exception as e:
+        await update.message.reply_text(
+            f"❌ **Error iniciando scraper de shotcharts**\n\n"
+            f"```\n{str(e)}\n```",
+            parse_mode='Markdown'
+        )
+
+
+async def run_shortchart_scraper_background(
+    chat_id: int,
+    admin_user_id: int,
+    admin_name: str,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    """
+    Ejecuta el scraper de shotcharts en segundo plano y reporta el progreso.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+    import time
+    
+    start_time = time.time()
+    
+    try:
+        # Cambiar al directorio del bot
+        original_dir = Path.cwd()
+        bot_dir = Path(__file__).parent
+        
+        # Mensaje de inicio
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"🚀 **Scraper de Shotcharts iniciado**\n\n"
+                 f"📁 Directorio: `{bot_dir}`\n"
+                 f"📅 Hora inicio: {time.strftime('%H:%M:%S')}\n\n"
+                 f"⏳ Ejecutando comando...",
+            parse_mode='Markdown'
+        )
+        
+        # Comando a ejecutar
+        cmd = [sys.executable, "scrapping_folder/shortchart_scraper.py"]
+        
+        # Ejecutar el scraper usando subprocess
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=bot_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        # Enviar actualizaciones de progreso cada 2 minutos
+        progress_task = asyncio.create_task(
+            send_progress_updates(context, chat_id, start_time)
+        )
+        
+        # Esperar a que termine el proceso
+        stdout, stderr = await process.communicate()
+        
+        # Decodificar output
+        if stdout:
+            stdout = stdout.decode('utf-8', errors='ignore')
+        if stderr:
+            stderr = stderr.decode('utf-8', errors='ignore')
+        
+        # Cancelar las actualizaciones de progreso
+        progress_task.cancel()
+        
+        # Calcular tiempo total
+        end_time = time.time()
+        total_time = end_time - start_time
+        time_str = f"{int(total_time // 60)}m {int(total_time % 60)}s"
+        
+        if process.returncode == 0:
+            # Éxito
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"✅ **Scraper de Shotcharts completado exitosamente**\n\n"
+                     f"⏱️ Tiempo total: {time_str}\n"
+                     f"📁 Archivos generados en: `scrapping_folder/shotcharts/`\n"
+                     f"📅 Hora finalización: {time.strftime('%H:%M:%S')}\n\n"
+                     f"🎯 **Los datos de shotcharts están actualizados**",
+                parse_mode='Markdown'
+            )
+            
+            # Log de éxito a admins
+            if SEND_ADMIN_LOGS and ADMIN_LOG_CHAT_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=ADMIN_LOG_CHAT_ID,
+                        text=f"🎯 **Scraper de Shotcharts ejecutado exitosamente**\n\n"
+                             f"👑 **Administrador:** {admin_name}\n"
+                             f"• User ID: `{admin_user_id}`\n"
+                             f"• Tiempo: {time_str}\n"
+                             f"• Resultado: ✅ Éxito\n"
+                             f"• Timestamp: {time.strftime('%H:%M:%S - %d/%m/%Y')}",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+        
+        else:
+            # Error
+            error_msg = stderr or "Error desconocido"
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text=f"❌ **Scraper de Shotcharts falló**\n\n"
+                     f"⏱️ Tiempo transcurrido: {time_str}\n"
+                     f"🔴 Código de salida: {process.returncode}\n\n"
+                     f"**Error:**\n```\n{error_msg[:1000]}\n```",
+                parse_mode='Markdown'
+            )
+            
+            # Log de error a admins
+            if SEND_ADMIN_LOGS and ADMIN_LOG_CHAT_ID:
+                try:
+                    await context.bot.send_message(
+                        chat_id=ADMIN_LOG_CHAT_ID,
+                        text=f"❌ **Scraper de Shotcharts falló**\n\n"
+                             f"👑 **Administrador:** {admin_name}\n"
+                             f"• User ID: `{admin_user_id}`\n"
+                             f"• Tiempo: {time_str}\n"
+                             f"• Código salida: {process.returncode}\n"
+                             f"• Error: {error_msg[:200]}...\n"
+                             f"• Timestamp: {time.strftime('%H:%M:%S - %d/%m/%Y')}",
+                        parse_mode='Markdown'
+                    )
+                except:
+                    pass
+    
+    except Exception as e:
+        # Error del proceso asyncio
+        end_time = time.time()
+        total_time = end_time - start_time
+        time_str = f"{int(total_time // 60)}m {int(total_time % 60)}s"
+        
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=f"❌ **Error ejecutando scraper de shotcharts**\n\n"
+                 f"⏱️ Tiempo transcurrido: {time_str}\n\n"
+                 f"**Error:**\n```\n{str(e)}\n```",
+            parse_mode='Markdown'
+        )
+
 
 async def cancelar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Operación cancelada. Usa /start para comenzar de nuevo.")
@@ -1488,6 +1794,147 @@ async def process_pdf_background(
 
 
 # ==========================
+# SISTEMA DE SOLICITUD DE ACCESO
+# ==========================
+
+async def handle_access_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Maneja cuando un usuario sin acceso envía el nombre de su equipo"""
+    user_id = update.effective_user.id
+    user_first_name = update.effective_user.first_name or "Usuario"
+    user_last_name = update.effective_user.last_name or ""
+    user_full_name = f"{user_first_name} {user_last_name}".strip()
+    username = update.effective_user.username or "sin_username"
+    team_name = update.message.text.strip()
+    
+    # Enviar confirmación al usuario
+    await update.message.reply_text(
+        f"✅ **Solicitud enviada**\n\n"
+        f"Equipo: {team_name}\n\n"
+        f"Los administradores revisarán tu solicitud pronto. "
+        f"Te notificaremos cuando tengas acceso al bot.",
+        parse_mode='Markdown'
+    )
+    
+    # Enviar notificación a los administradores
+    try:
+        # Crear botones para aprobar con diferentes cantidades de generaciones
+        keyboard = [
+            [
+                InlineKeyboardButton("✅ 2 PDFs", callback_data=f"approve_access::{user_id}::2"),
+                InlineKeyboardButton("✅ 3 PDFs", callback_data=f"approve_access::{user_id}::3"),
+                InlineKeyboardButton("✅ 4 PDFs", callback_data=f"approve_access::{user_id}::4"),
+            ],
+            [
+                InlineKeyboardButton("✅ 5 PDFs", callback_data=f"approve_access::{user_id}::5"),
+                InlineKeyboardButton("✅ 6 PDFs", callback_data=f"approve_access::{user_id}::6"),
+                InlineKeyboardButton("✅ 7 PDFs", callback_data=f"approve_access::{user_id}::7"),
+            ],
+            [
+                InlineKeyboardButton("❌ Rechazar", callback_data=f"reject_access::{user_id}"),
+            ]
+        ]
+        
+        admin_message = (
+            f"🔔 **NUEVA SOLICITUD DE ACCESO**\n\n"
+            f"👤 **Usuario:**\n"
+            f"• Nombre: {user_full_name}\n"
+            f"• Username: @{username}\n"
+            f"• User ID: `{user_id}`\n\n"
+            f"🏀 **Equipo solicitado:**\n"
+            f"• {team_name}\n\n"
+            f"**¿Aprobar acceso?**\n"
+            f"Selecciona cuántas generaciones asignar:"
+        )
+        
+        await context.bot.send_message(
+            chat_id=ADMIN_LOG_CHAT_ID,
+            text=admin_message,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+        
+    except Exception as e:
+        print(f"Error enviando solicitud de acceso a admins: {e}")
+    
+    # Terminar la conversación
+    return ConversationHandler.END
+
+
+async def handle_access_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Maneja cuando un admin aprueba o rechaza una solicitud de acceso"""
+    query = update.callback_query
+    await query.answer()
+    
+    # Verificar que quien presiona el botón es admin
+    admin_id = update.effective_user.id
+    if not is_user_admin(admin_id):
+        await query.answer("❌ Solo los administradores pueden aprobar solicitudes", show_alert=True)
+        return
+    
+    # Parsear el callback data
+    parts = query.data.split("::")
+    action = parts[0]  # "approve_access" o "reject_access"
+    target_user_id = int(parts[1])
+    
+    if action == "approve_access":
+        generations = int(parts[2])
+        
+        # Autorizar al usuario y asignar generaciones
+        update_user_permissions(
+            user_id=target_user_id,
+            authorized=True,
+            admin=False,
+            max_generations=generations,
+            name=f"User {target_user_id}"  # Se actualizará cuando use el bot
+        )
+        
+        # Actualizar mensaje del admin
+        await query.edit_message_text(
+            f"{query.message.text}\n\n"
+            f"✅ **APROBADO** por @{update.effective_user.username or 'admin'}\n"
+            f"📊 Generaciones asignadas: {generations}",
+            parse_mode='Markdown'
+        )
+        
+        # Notificar al usuario aprobado
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text=(
+                    f"🎉 **¡Acceso aprobado!**\n\n"
+                    f"Ya puedes usar el bot PiScouting.\n"
+                    f"Tienes **{generations} generaciones** de PDFs disponibles.\n\n"
+                    f"Escribe /start para comenzar."
+                ),
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Error notificando aprobación al usuario {target_user_id}: {e}")
+        
+    elif action == "reject_access":
+        # Actualizar mensaje del admin
+        await query.edit_message_text(
+            f"{query.message.text}\n\n"
+            f"❌ **RECHAZADO** por @{update.effective_user.username or 'admin'}",
+            parse_mode='Markdown'
+        )
+        
+        # Notificar al usuario rechazado
+        try:
+            await context.bot.send_message(
+                chat_id=target_user_id,
+                text=(
+                    f"❌ **Solicitud de acceso rechazada**\n\n"
+                    f"Tu solicitud de acceso al bot ha sido rechazada.\n"
+                    f"Si crees que esto es un error, contacta con los administradores."
+                ),
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            print(f"Error notificando rechazo al usuario {target_user_id}: {e}")
+
+
+# ==========================
 # MAIN
 # ==========================
 
@@ -1513,6 +1960,9 @@ def main():
     # Agregar manejador de errores
     app.add_error_handler(error_handler)
 
+    # Manejadores de solicitudes de acceso (callback para botones de admin)
+    app.add_handler(CallbackQueryHandler(handle_access_approval, pattern=r"^(approve_access|reject_access)::"))
+
     # Agregar comandos independientes
     app.add_handler(CommandHandler("info", get_user_info))
     app.add_handler(CommandHandler("limits", check_limits))
@@ -1524,7 +1974,9 @@ def main():
     app.add_handler(CommandHandler("reset_all", admin_reset_all))
     app.add_handler(CommandHandler("list_users", admin_list_users))
     app.add_handler(CommandHandler("authorize_user", admin_authorize_user))
+    app.add_handler(CommandHandler("delete_user", admin_delete_user))
     app.add_handler(CommandHandler("run_scraper", admin_run_scraper))
+    app.add_handler(CommandHandler("run_shortchart_scraper", admin_run_shortchart_scraper))
     
     conv = ConversationHandler(
         entry_points=[
@@ -1533,6 +1985,9 @@ def main():
             CallbackQueryHandler(restart, pattern=r"^restart$")
         ],
         states={
+            SOLICITAR_ACCESO_EQUIPO: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_access_request)
+            ],
             ELEGIR_COMPETICION: [
                 CallbackQueryHandler(elegir_competicion, pattern=r"^comp::"),
                 CallbackQueryHandler(locked_1feb_handler, pattern=r"^locked_1feb$"),
