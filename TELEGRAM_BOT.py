@@ -31,16 +31,35 @@ from telegram.ext import (
 from pdf_generator.final_pdf import generar_pdf_final
 
 # ==========================
+# CONFIGURACIÓN DE COMPETICIONES HABILITADAS
+# ==========================
+
+# Variables para controlar qué competiciones están disponibles
+COMPETICIONES_HABILITADAS = {
+    "1ª FEB": False,    # True = Habilitada, False = Bloqueada
+    "2ª FEB": True,     # True = Habilitada, False = Bloqueada  ← DESBLOQUEADA
+    "3ª FEB": True,     # True = Habilitada, False = Bloqueada
+}
+
+# Mensajes personalizados para competiciones bloqueadas
+MENSAJES_BLOQUEO = {
+    "1ª FEB": "🔒 Primera FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+    "2ª FEB": "🔒 Segunda FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+    "3ª FEB": "🔒 Tercera FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+}
+
+# ==========================
 # CONFIGURACIÓN
 # ==========================
 BASE_DIR = Path(__file__).parent.resolve()
-DATA_PATH = BASE_DIR / "data" / "datos_historicos.json"  # Archivo multi-temporada
+DATA_PATH = BASE_DIR / "data" / "datos_historicos_prueba.json"  # Archivo multi-temporada
 USER_LIMITS_PATH = BASE_DIR / "data" / "user_limits.json"  # Archivo para guardar contadores
 TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
-# Desarollo bot IVAN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+# Desarollo bot IVAN = 
 TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+# no se cual ew: "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 #TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
@@ -453,17 +472,16 @@ async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
     max_generations = user_data.get("max_generations", get_default_max_generations())
     user_name = user_data.get("name", update.effective_user.first_name or f"Usuario {user_id}")
     
-    # Crear botones con bloqueo para "1ª FEB" y "2ª FEB"
+    # Crear botones dinámicamente según configuración
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
-        if comp == "1ª FEB":
-            # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
-        elif comp == "2ª FEB":
-            # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_2feb")])
-        else:
+        # Verificar si la competición está habilitada
+        if COMPETICIONES_HABILITADAS.get(comp, True):  # Por defecto habilitada si no está en el dict
+            # Competición habilitada - botón normal
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
+        else:
+            # Competición bloqueada - botón con icono de bloqueo
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data=f"locked::{comp}")])
 
     
     text = (f"🏀 **¡Hola {user_name}!**\n\n"
@@ -495,17 +513,16 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
         max_generations = get_default_max_generations()
         user_name = "Usuario"
     
-    # Crear botones con bloqueo para "1ª FEB" y "2ª FEB"
+    # Crear botones dinámicamente según configuración
     teclado = []
     for i, comp in enumerate(COMPETICIONES):
-        if comp == "1ª FEB":
-            # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_1feb")])
-        elif comp == "2ª FEB":
-            # Botón bloqueado - no hace nada al presionarse
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data="locked_2feb")])
-        else:
+        # Verificar si la competición está habilitada
+        if COMPETICIONES_HABILITADAS.get(comp, True):  # Por defecto habilitada si no está en el dict
+            # Competición habilitada - botón normal
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
+        else:
+            # Competición bloqueada - botón con icono de bloqueo
+            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data=f"locked::{comp}")])
 
     
     text = (f"🏀 **¡Hola {user_name}!**\n\n"
@@ -660,26 +677,18 @@ async def elegir_equipo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRMAR_EQUIPO
 
 
-async def locked_1feb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler para el botón bloqueado de 1º FEB"""
+async def locked_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handler unificado para todas las competiciones bloqueadas"""
     query = update.callback_query
-    await query.answer(
-        "🔒 Primera FEB no está disponible aún.\n\n"
-        "Esta competición estará habilitada próximamente. 🏀",
-        show_alert=True
-    )
-    # No cambiar el estado, mantener en el mismo menú
-    return ELEGIR_COMPETICION
-
-
-async def locked_2feb_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Handler para el botón bloqueado de 2º FEB"""
-    query = update.callback_query
-    await query.answer(
-        "🔒 Segunda FEB no está disponible aún.\n\n"
-        "Esta competición estará habilitada próximamente. 🏀",
-        show_alert=True
-    )
+    
+    # Extraer el nombre de la competición del callback_data
+    # Formato: "locked::Nombre Competición"
+    _, competicion = query.data.split("::", maxsplit=1)
+    
+    # Obtener mensaje personalizado o usar uno por defecto
+    mensaje = MENSAJES_BLOQUEO.get(competicion, f"🔒 {competicion} no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀")
+    
+    await query.answer(mensaje, show_alert=True)
     # No cambiar el estado, mantener en el mismo menú
     return ELEGIR_COMPETICION
 
@@ -1990,8 +1999,7 @@ def main():
             ],
             ELEGIR_COMPETICION: [
                 CallbackQueryHandler(elegir_competicion, pattern=r"^comp::"),
-                CallbackQueryHandler(locked_1feb_handler, pattern=r"^locked_1feb$"),
-                CallbackQueryHandler(locked_2feb_handler, pattern=r"^locked_2feb$"),
+                CallbackQueryHandler(locked_handler, pattern=r"^locked::"),  # Handler unificado
                 CallbackQueryHandler(restart, pattern=r"^restart$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, mensaje_no_permitido)
             ],

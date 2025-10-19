@@ -22,7 +22,7 @@ from reportlab.lib.units import mm
 from reportlab.platypus.flowables import Image as ReportLabImage
 
 # Importar funciones necesarias del módulo de scraping
-from scrapping_folder.shortchart_class import (
+from scrapping_folder.shortchart_class_anterior import (
     select_team_from_datos,
     coerce_str,
     parse_qs_param,

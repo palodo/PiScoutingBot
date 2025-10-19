@@ -275,25 +275,10 @@ def obtener_ultimos_partidos_equipo(nombre_equipo: str, liga: str = None, csv_pa
             liga_numero = liga_mapper[liga]
             print(f"🔍 Filtrando por liga: {liga} (número {liga_numero})")
             
-            # Extraer número de liga desde source_url usando regex
-            # Formato esperado: https://baloncestoenvivo.feb.es/calendario/tercerafeb/X/2025
-            def extract_liga_number(source_url):
-                if pd.isna(source_url):
-                    return None
-                try:
-                    # Buscar patrón: /calendario/tercerafeb/X/YYYY donde X es el número de liga
-                    match = re.search(r'/calendario/tercerafeb/(\d+)/', str(source_url))
-                    if match:
-                        return match.group(1)
-                    return None
-                except:
-                    return None
-            
-            # Aplicar extracción de número de liga
-            partidos_equipo['liga_numero'] = partidos_equipo['source_url'].apply(extract_liga_number)
-            
-            # Filtrar por el número de liga correspondiente
-            partidos_liga = partidos_equipo[partidos_equipo['liga_numero'] == liga_numero]
+            # El CSV actual tiene columna 'liga' con formato "Liga X"
+            # Filtrar por el formato correcto de liga
+            liga_formato = f"Liga {liga_numero}"
+            partidos_liga = partidos_equipo[partidos_equipo['liga'] == liga_formato]
             
             if partidos_liga.empty:
                 print(f"⚠️ No se encontraron partidos para {nombre_equipo} en {liga}")
@@ -2753,6 +2738,10 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     # ============== PÁGINA: ESTADÍSTICAS INDIVIDUALES ==============
     crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, styles, equipo_url, df_resultados, df_jugadores_norm)
     
+    # ============== PÁGINAS: GRÁFICAS DE TIRO (SHOT CHARTS) ==============
+    # Nota: Los shot charts se generan en generar_pdf_final y se insertan aquí automáticamente
+    # Esta sección es un marcador para el orden correcto de las páginas
+    
     # ============== PÁGINAS: HISTORIAL DE JUGADORES ==============
     if JSON_PATH and "datos_historicos" in str(JSON_PATH):
         print("\n📚 Recopilando historial de jugadores principales...")
@@ -2788,14 +2777,14 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     # ============== PÁGINA: ANÁLISIS Y RESUMEN DEL EQUIPO ==============
     crear_pagina_analisis_equipo(story, df_principales, titulo_style, styles)
     
-    # ============== PÁGINA: RANKINGS DE EQUIPOS - MOVIDO DESPUÉS DE ANÁLISIS ==============
+    # ============== PÁGINA: RANKINGS INDIVIDUALES ==============
+    crear_pagina_rankings(story, rankings, styles, equipo_url, df_resultados)
+    
+    # ============== PÁGINA: RANKINGS DE EQUIPOS - MOVIDO DESPUÉS DE RANKINGS INDIVIDUALES ==============
     if rankings_equipos and df_grupo is not None:
         crear_pagina_rankings_equipos(story, rankings_equipos, df_grupo, nombre_equipo, styles)
         # Añadir segunda página de rankings con estadísticas adicionales
         crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_grupo, nombre_equipo, styles)
-    
-    # ============== PÁGINA: RANKINGS INDIVIDUALES ==============
-    crear_pagina_rankings(story, rankings, styles, equipo_url, df_resultados)
     
     return story
 
@@ -3276,9 +3265,8 @@ def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
     
     leyenda_text = (
         '<b>LEYENDA:</b> '
-        '<font color="green"><b>■ VERDE</b></font> = Mejora de valoración ≥ 3 puntos | '
-        '<font color="red"><b>■ ROJO</b></font> = Disminución de valoración ≥ 3 puntos | '
-        'Evolución Val = Diferencia actual vs. temporada anterior'
+        'Los valores en negro corresponden a las estadísticas de la temporada 24/25. '
+        'Los valores con +/- indican las mejoras o declives respecto a la temporada actual.'
     )
     story.append(Paragraph(leyenda_text, leyenda_style))
 
