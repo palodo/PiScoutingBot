@@ -7,27 +7,15 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import os
-import sys
 from datetime import datetime
 from requests.exceptions import ReadTimeout, ConnectionError
 
-# Configurar codificación UTF-8 para Windows
-if sys.platform == 'win32':
-    import io
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
-
-# URLs a procesar: /1, /2, /3
-URLS = [
-    "https://baloncestoenvivo.feb.es/calendario/tercerafeb/1/2025",
-    "https://baloncestoenvivo.feb.es/calendario/tercerafeb/2/2025",
-    "https://baloncestoenvivo.feb.es/calendario/tercerafeb/3/2025"
-]
+# === CONFIGURACIÓN GLOBAL ===
+LIGAS_A_SCRAPEAR = [2, 3]  # Lista de ligas: 2 = Segunda FEB, 3 = Tercera FEB
+BASE_URL_TEMPLATE = "https://baloncestoenvivo.feb.es/calendario/tercerafeb/{}/2025"
 BASE = "https://baloncestoenvivo.feb.es"
 
-# === CONFIGURACIÓN ===
 # Año de la temporada de INICIO: 2025 -> "2025/2026", 2024 -> "2024/2025", etc.
-# Si pones 2025, NO hará postback de temporada (es la que sale por defecto en esa URL).
 TARGET_SEASON_YEAR = 2025
 
 # === MODO DEPURACIÓN ===
@@ -95,7 +83,7 @@ def serialize_form(soup, base_url):
         data[sel_name] = opt.get("value", "") if opt is not None else ""
     
     # Verificar campos críticos de ASP.NET
-    critical_fields = ["_VIEWSTATE", "EVENTVALIDATION", "_VIEWSTATEGENERATOR"]
+    critical_fields = ["__VIEWSTATE", "__EVENTVALIDATION", "__VIEWSTATEGENERATOR"]
     for k in critical_fields:
         status = "✅ OK" if data.get(k) else "❌ NO"
         log(f"   · {k}: {status}")
@@ -146,7 +134,7 @@ def post_with_retries(session, action, data, headers, timeout=30, tries=2, backo
             return resp
         except (ReadTimeout, ConnectionError, requests.HTTPError) as e:
             last_exc = e
-            log(f"   ⚠  POST fallo intento {attempt}/{tries}: {e}")
+            log(f"   ⚠️  POST fallo intento {attempt}/{tries}: {e}")
             if attempt < tries:
                 sleep_s = backoff * (2 ** (attempt - 1)) + random.uniform(0, 0.3)
                 time.sleep(sleep_s)
@@ -163,9 +151,7 @@ def postback(session, action, payload, eventtarget, field_name=None, field_value
     log(f"   📤 POSTBACK → TARGET={eventtarget} | FIELD={field_name} | VALUE={field_value}")
     
     try:
-        headers = {**HEADERS, "X-MicrosoftAjax": "Delta=true"}
-        if referer:
-            headers["Referer"] = referer
+        headers = {**HEADERS, "Referer": referer or "", "X-MicrosoftAjax": "Delta=true"}
         resp = post_with_retries(session, action, p, headers=headers, timeout=30, tries=2)
         html = resp.text
         
@@ -261,7 +247,7 @@ def is_valid_team_name(name):
     
     forbidden_words = [
         'contacto', 'aviso legal', 'política', 'cookies', 'federación', 
-        'privacidad', 'copyright', '©', 'cumplimiento', 'directiva',
+        'privacidad', 'copyright', '©️', 'cumplimiento', 'directiva',
         'navegación', 'usuario', 'sitio web', 'configuración', 'navegador',
         'baloncesto', 'feb.es', 'deshabilite', 'utiliza', 'mediante'
     ]
@@ -339,8 +325,8 @@ def extract_resultado_from_tr(tr):
         return f"{m.group(1)}-{m.group(2)}"
     return None
 
-def parse_matches(html, grupo_name=""):
-    log(f"  🔄 Parseando partidos en '{grupo_name}'...")
+def parse_matches(html, grupo_name="", liga_numero=None):
+    log(f"  🔄 Parseando partidos en '{grupo_name}' (Liga {liga_numero})...")
     soup = BeautifulSoup(html, "lxml")
     rows = []
 
@@ -444,6 +430,7 @@ def parse_matches(html, grupo_name=""):
 
                 if local and visitante and local != visitante:
                     row_data = {
+                        "liga": f"Liga {liga_numero}" if liga_numero else "Sin especificar",
                         "jornada": jornada_title or "Sin especificar",
                         "fecha": fecha_final,                 # ← SOLO fecha (desde H1)
                         "resultado": resultado,               # ← NUEVO
@@ -524,6 +511,7 @@ def parse_matches(html, grupo_name=""):
 
             if local and visitante and local != visitante:
                 row_data = {
+                    "liga": f"Liga {liga_numero}" if liga_numero else "Sin especificar",
                     "jornada": jornada_title,
                     "fecha": fecha_final,                 # ← Fecha desde H1 si disponible
                     "resultado": resultado,               # ← NUEVO
@@ -541,28 +529,34 @@ def parse_matches(html, grupo_name=""):
     log(f"    📊 Total partidos extraídos: {len(rows)}")
     return rows
 
-def parse_matches_with_validation(html, grupo_name):
+def parse_matches_with_validation(html, grupo_name, liga_numero=None):
     if not check_page_content(html, grupo_name):
-        log(f"  ⏭  Saltando parseo de '{grupo_name}' - página sin contenido válido")
+        log(f"  ⏭️  Saltando parseo de '{grupo_name}' - página sin contenido válido")
         return []
-    return parse_matches(html, grupo_name)
+    return parse_matches(html, grupo_name, liga_numero)
 
 # --------- guardar CSV ----------
-def save_to_csv(all_rows):
-    """Guarda los datos en CSV con nombre que incluye la fecha actual"""
+def save_to_csv(all_rows, filename_suffix=""):
+    """Guarda los datos en CSV con nombre fijo 'datos_completos.csv' en la carpeta data/"""
     if not all_rows:
         log("❌ No hay datos para guardar en CSV")
         return None
     
-    fecha_actual = datetime.now().strftime("%Y%m%d")
-    #filename = f"results_{fecha_actual}.csv"
-    filename = f"./data/datos_completos.csv"
+    # Usar ruta fija como en final_pdf.py
+    from pathlib import Path
     
-    # Columnas (añadimos 'resultado' y 'source_url')
+    # Crear la carpeta data si no existe
+    data_dir = Path("data")
+    data_dir.mkdir(exist_ok=True)
+    
+    # Nombre fijo del archivo
+    filename = data_dir / "datos_completos.csv"
+    
+    # Columnas (añadimos 'liga' y 'resultado')
     columns = [
-        'grupo', 'jornada', 'fecha', 'resultado',
+        'liga', 'grupo', 'jornada', 'fecha', 'resultado',
         'local', 'local_url', 'visitante', 'visitante_url',
-        'partido_id', 'partido_url', 'source_url', 'raw'
+        'partido_id', 'partido_url', 'raw'
     ]
     
     try:
@@ -573,45 +567,47 @@ def save_to_csv(all_rows):
         log(f"   📊 Total registros: {len(df)}")
         log(f"   📋 Columnas: {list(df.columns)}")
         
+        ligas_unicas = df['liga'].nunique()
         grupos_unicos = df['grupo'].nunique()
         jornadas_unicas = df['jornada'].nunique()
-        log(f"   📈 Estadísticas: {grupos_unicos} grupos únicos, {jornadas_unicas} jornadas únicas")
+        log(f"   📈 Estadísticas: {ligas_unicas} ligas, {grupos_unicos} grupos únicos, {jornadas_unicas} jornadas únicas")
         
-        return filename
+        return str(filename)  # Retornar como string
         
     except Exception as e:
         log(f"❌ Error guardando CSV: {e}")
         return None
 
-# --------- flujo principal ----------
-def scrape_single_url(url):
-    """Procesa una sola URL y retorna las filas extraídas"""
-    log(f"🚀 Procesando URL: {url}")
+# --------- flujo principal para una liga ----------
+def scrape_single_liga(liga_numero):
+    """Scrapea una liga específica y devuelve los datos"""
+    hr(f"SCRAPING LIGA {liga_numero}")
+    URL = BASE_URL_TEMPLATE.format(liga_numero)
+    log(f"🌐 URL para Liga {liga_numero}: {URL}")
     
     s = requests.Session()
     s.headers.update(HEADERS)
 
-    hr("GET inicial")
     try:
-        r = s.get(url, timeout=30)
+        r = s.get(URL, timeout=30)
         r.raise_for_status()
         if not r.encoding:
             r.encoding = r.apparent_encoding or 'utf-8'
-        log(f"✅ Página inicial cargada: {len(r.text):,} caracteres")
-        save_debug_html(r.text, "pagina_inicial")
+        log(f"✅ Página Liga {liga_numero} cargada: {len(r.text):,} caracteres")
+        save_debug_html(r.text, f"liga_{liga_numero}_inicial")
         
     except Exception as e:
-        log(f"❌ Error cargando página inicial: {e}")
+        log(f"❌ Error cargando página Liga {liga_numero}: {e}")
         return []
     
     soup = BeautifulSoup(r.text, "lxml")
-    action, payload, form = serialize_form(soup, url)
+    action, payload, form = serialize_form(soup, URL)
 
     list_all_selects(form)
 
     # === Selección de TEMPORADA (antes que grupos) ===
     desired_label = f"{TARGET_SEASON_YEAR}/{TARGET_SEASON_YEAR+1}"
-    hr(f"SELECCIÓN TEMPORADA → {desired_label}")
+    log(f"🔄 Verificando temporada → {desired_label}")
     sel_season = find_season_select(form)
     if sel_season:
         season_opts = []
@@ -626,17 +622,17 @@ def scrape_single_url(url):
         log(f"📊 Total temporadas disponibles: {len(season_opts)} | Seleccionada: {selected_text}")
 
         if TARGET_SEASON_YEAR == 2025:
-            log("ℹ Temporada objetivo es 2025/2026 (por defecto en esta URL) → no se hace postback de temporada.")
+            log("ℹ️ Temporada objetivo es 2025/2026 (por defecto) → no se hace postback de temporada.")
             html_after_season = r.text
         else:
             match = next((o for o in season_opts if o[1] == desired_label), None)
             if not match:
-                log(f"⚠ No se encontró la temporada '{desired_label}' en el select. Se mantiene la actual.")
+                log(f"⚠️ No se encontró la temporada '{desired_label}'. Se mantiene la actual.")
                 html_after_season = r.text
             else:
                 val, txt, is_sel = match
                 if is_sel:
-                    log("ℹ La temporada deseada ya está seleccionada → sin postback.")
+                    log("ℹ️ La temporada deseada ya está seleccionada → sin postback.")
                     html_after_season = r.text
                 else:
                     log(f"🔄 Haciendo postback para cambiar a temporada '{txt}' (value={val})")
@@ -644,7 +640,7 @@ def scrape_single_url(url):
                     html_after_season = postback(
                         s, action, payload, season_eventtarget,
                         field_name=sel_season.get("name"), field_value=val,
-                        dbg_title=f"temporada_{TARGET_SEASON_YEAR}"
+                        referer=URL, dbg_title=f"liga_{liga_numero}_temporada_{TARGET_SEASON_YEAR}"
                     )
                     if not html_after_season:
                         log("❌ Postback de temporada no devolvió HTML. Continuamos con la actual.")
@@ -652,19 +648,19 @@ def scrape_single_url(url):
 
         soup = BeautifulSoup(html_after_season, "lxml")
         try:
-            action, payload, form = serialize_form(soup, url)
+            action, payload, form = serialize_form(soup, URL)
         except Exception as e:
-            log(f"⚠ Error actualizando form state tras cambiar temporada: {e}")
+            log(f"⚠️ Error actualizando form state tras cambiar temporada: {e}")
     else:
-        log("⚠ No se encontró select de temporadas. Se continúa sin cambio de temporada.")
+        log("⚠️ No se encontró select de temporadas. Se continúa sin cambio de temporada.")
         html_after_season = r.text
 
-    # ======= A PARTIR DE AQUÍ, SELECCIÓN DE GRUPOS/JORNADAS =======
-    hr("Localizar select de GRUPOS")
+    # ======= SELECCIÓN DE GRUPOS/JORNADAS =======
+    log("🔍 Localizando select de GRUPOS")
     sel_groups = find_group_select(form)
     if not sel_groups: 
         log("❌ No se encontró el select de grupos.")
-        return
+        return []
     
     g_name = sel_groups.get("name")
     g_id = sel_groups.get("id")
@@ -696,7 +692,7 @@ def scrape_single_url(url):
     html_base = html_after_season
 
     for gi, (gval, glabel, is_default) in enumerate(grupos_iter, 1):
-        hr(f"GRUPO {gi}/{len(grupos_iter)}: {glabel}")
+        log(f"\n📁 GRUPO {gi}/{len(grupos_iter)}: {glabel}")
         
         if is_default:
             log(f"🔄 Grupo por defecto detectado - usando página actual SIN postback")
@@ -704,7 +700,7 @@ def scrape_single_url(url):
         else:
             log(f"🔄 Haciendo postback para grupo: value={gval}")
             html_group = postback(s, action, payload, g_eventtarget, g_name, gval, 
-                                 dbg_title=f"grupo_{gi:02d}_{gval}")
+                                 referer=URL, dbg_title=f"liga_{liga_numero}_grupo_{gi:02d}_{gval}")
         
         if not html_group:
             log(f"❌ Error obteniendo datos del grupo {glabel}")
@@ -712,9 +708,9 @@ def scrape_single_url(url):
         
         soup_g = BeautifulSoup(html_group, "lxml")
         try:
-            action, payload_g, form_g = serialize_form(soup_g, url)
+            action, payload_g, form_g = serialize_form(soup_g, URL)
         except Exception as e:
-            log(f"⚠ Error actualizando form state para grupo {glabel}: {e}")
+            log(f"⚠️ Error actualizando form state para grupo {glabel}: {e}")
             payload_g = payload.copy()
             form_g = form
 
@@ -741,119 +737,114 @@ def scrape_single_url(url):
                 else:
                     log(f"    🔄 Haciendo postback para jornada")
                     html_j = postback(s, action, payload_g, j_et, j_name, jval, 
-                                     dbg_title=f"grupo_{gi:02d}jornada{ji:02d}")
+                                     referer=URL, dbg_title=f"liga_{liga_numero}_grupo_{gi:02d}jornada{ji:02d}")
                 
                 if not html_j:
                     log(f"    ❌ Error obteniendo jornada {jlab}")
                     continue
                 
-                rows = parse_matches_with_validation(html_j, f"{glabel} - {jlab}")
+                rows = parse_matches_with_validation(html_j, f"{glabel} - {jlab}", liga_numero)
                 for r in rows:
                     r["grupo"] = glabel
                     if not r.get("jornada") or r["jornada"] == "Sin especificar":
                         r["jornada"] = jlab
                 all_rows.extend(rows)
-                log(f"    📊 Partidos agregados: {len(rows)} | Total acumulado: {len(all_rows)}")
+                log(f"    📊 Partidos agregados: {len(rows)} | Total Liga {liga_numero}: {len(all_rows)}")
                 
                 if not (is_j_default and gi == 1):
                     try:
                         soup_j = BeautifulSoup(html_j, "lxml")
-                        action, payload_g, form_g = serialize_form(soup_j, url)
+                        action, payload_g, form_g = serialize_form(soup_j, URL)
                     except Exception as e:
-                        log(f"    ⚠ Error actualizando form state jornada: {e}")
+                        log(f"    ⚠️ Error actualizando form state jornada: {e}")
         else:
-            log("ℹ  No hay select de jornadas, procesando página actual...")
-            rows = parse_matches_with_validation(html_group, glabel)
+            log("ℹ️  No hay select de jornadas, procesando página actual...")
+            rows = parse_matches_with_validation(html_group, glabel, liga_numero)
             for r in rows: 
                 r["grupo"] = glabel
             all_rows.extend(rows)
-            log(f"  📊 Partidos del grupo: {len(rows)} | Total: {len(all_rows)}")
+            log(f"  📊 Partidos del grupo: {len(rows)} | Total Liga {liga_numero}: {len(all_rows)}")
 
         if not is_default:
             try:
                 soup_g = BeautifulSoup(html_group, "lxml")
-                action, payload, form = serialize_form(soup_g, url)
+                action, payload, form = serialize_form(soup_g, URL)
             except Exception as e:
-                log(f"  ⚠ Error actualizando form state grupo: {e}")
+                log(f"  ⚠️ Error actualizando form state grupo: {e}")
 
-    # Añadir identificador de URL de origen a cada fila
-    for row in all_rows:
-        row['source_url'] = url
-    
-    # Retornar los datos recopilados
-    log(f"✅ Scraping de URL completado: {len(all_rows)} partidos extraídos")
+    log(f"🎉 Liga {liga_numero} completada! Total partidos: {len(all_rows)}")
     return all_rows
 
-
+# --------- flujo principal multi-liga ----------
 def main():
-    """Función principal que procesa todas las URLs y guarda en un único CSV"""
-    log("="*80)
-    log("🚀 INICIANDO SCRAPER MULTI-URL DE FEB")
-    log("="*80)
+    """Flujo principal que scrapea múltiples ligas y genera CSV combinado"""
+    log("🚀 Iniciando scraper multi-liga FEB...")
     os.makedirs("debug_html", exist_ok=True)
     
-    all_combined_rows = []
+    all_data_combined = []
+    ligas_procesadas = []
     
-    for idx, url in enumerate(URLS, 1):
-        hr(f"URL {idx}/{len(URLS)}")
-        log(f"🌐 Procesando: {url}")
+    for liga_num in LIGAS_A_SCRAPEAR:
+        log(f"\n" + "="*80)
+        log(f"🏀 INICIANDO SCRAPING LIGA {liga_num}")
+        log(f"="*80)
         
         try:
-            rows = scrape_single_url(url)
-            all_combined_rows.extend(rows)
-            log(f"✅ URL {idx} completada: {len(rows)} partidos | Total acumulado: {len(all_combined_rows)}")
+            datos_liga = scrape_single_liga(liga_num)
+            if datos_liga:
+                all_data_combined.extend(datos_liga)
+                ligas_procesadas.append(liga_num)
+                log(f"✅ Liga {liga_num} procesada exitosamente: {len(datos_liga)} partidos")
+            else:
+                log(f"⚠️ Liga {liga_num} no devolvió datos")
         except Exception as e:
-            log(f"❌ Error procesando URL {idx}: {e}")
-            import traceback
-            log(f"💥 Traceback: {traceback.format_exc()}")
-        
-        # Pausa entre URLs para no sobrecargar el servidor
-        if idx < len(URLS):
-            wait_time = random.uniform(2, 4)
-            log(f"⏸️  Pausa de {wait_time:.1f}s antes de la siguiente URL...")
-            time.sleep(wait_time)
+            log(f"❌ Error procesando Liga {liga_num}: {e}")
+            continue
     
     # ===== GUARDAR RESULTADOS COMBINADOS =====
     hr("GUARDAR RESULTADOS FINALES")
-    if all_combined_rows:
-        log(f"🎉 Scraping completado! Total partidos extraídos de {len(URLS)} URLs: {len(all_combined_rows)}")
+    if all_data_combined:
+        ligas_suffix = "".join(map(str, ligas_procesadas))
+        log(f"🎉 Scraping multi-liga completado!")
+        log(f"📊 Resumen total:")
+        log(f"   • Ligas procesadas: {ligas_procesadas}")
+        log(f"   • Total partidos: {len(all_data_combined)}")
         
-        grupos_unicos = set(r['grupo'] for r in all_combined_rows)
-        jornadas_unicas = set(r['jornada'] for r in all_combined_rows if r['jornada'])
-        urls_procesadas = set(row.get('source_url', 'unknown') for row in all_combined_rows)
+        # Estadísticas por liga
+        ligas_stats = {}
+        for row in all_data_combined:
+            liga = row.get('liga', 'Sin especificar')
+            ligas_stats[liga] = ligas_stats.get(liga, 0) + 1
         
-        log(f"📊 Resumen final:")
-        log(f"   • URLs procesadas: {len(URLS)}")
-        log(f"   • Grupos procesados: {len(grupos_unicos)}")
-        log(f"   • Jornadas encontradas: {len(jornadas_unicas)}")
-        log(f"   • Total partidos: {len(all_combined_rows)}")
+        for liga, count in ligas_stats.items():
+            log(f"   • {liga}: {count} partidos")
         
-        csv_file = save_to_csv(all_combined_rows)
+        grupos_unicos = set(r['grupo'] for r in all_data_combined if r.get('grupo'))
+        jornadas_unicas = set(r['jornada'] for r in all_data_combined if r.get('jornada'))
+        log(f"   • Grupos únicos: {len(grupos_unicos)}")
+        log(f"   • Jornadas únicas: {len(jornadas_unicas)}")
+        
+        csv_file = save_to_csv(all_data_combined, ligas_suffix)
         if csv_file:
-            log(f"✅ Datos guardados exitosamente en: {csv_file}")
+            log(f"✅ Datos combinados guardados exitosamente en: {csv_file}")
         else:
             log(f"❌ Error guardando CSV, pero los datos están en memoria")
             
-        log("📋 Muestra de datos extraídos:")
-        for i, row in enumerate(all_combined_rows[:10], 1):
-            log(f"   [{i:2d}] {row['grupo']} | {row['jornada']} | {row.get('fecha')} | {row.get('resultado')} | {row['local']} vs {row['visitante']}")
-        if len(all_combined_rows) > 10:
-            log(f"   ... y {len(all_combined_rows) - 10} partidos más")
+        log("📋 Muestra de datos combinados:")
+        for i, row in enumerate(all_data_combined[:8], 1):
+            log(f"   [{i}] {row.get('liga')} | {row['grupo']} | {row['jornada']} | {row.get('fecha')} | {row.get('resultado')} | {row['local']} vs {row['visitante']}")
+        if len(all_data_combined) > 8:
+            log(f"   ... y {len(all_data_combined) - 8} partidos más")
             
-        # Estadísticas por URL
-        log("\n📊 Desglose por URL:")
-        for idx, url in enumerate(URLS, 1):
-            count = sum(1 for r in all_combined_rows if r.get('raw', '').startswith(f'URL{idx}') or True)
-            log(f"   URL {idx}: {url}")
-            
+        return csv_file
     else:
-        log("❌ No se extrajeron partidos de ninguna URL.")
-        log("💡 Sugerencias:")
-        log("   • Verifica que las URLs estén correctas")
-        log("   • Revisa los archivos HTML en debug_html/")
-        log("   • Considera ajustar los selectores CSS")
-        log("   • Verifica la conectividad a internet")
+        log("❌ No se extrajeron partidos de ninguna liga. Revisa los logs para identificar problemas.")
+        return None
 
 # ===== EJECUTAR EL PROGRAMA =====
 if __name__ == "__main__":
-    main()
+    resultado = main()
+    if resultado:
+        log(f"\n🎯 PROCESO COMPLETADO - Archivo generado: {resultado}")
+    else:
+        log(f"\n❌ PROCESO FALLÓ - No se generó archivo")

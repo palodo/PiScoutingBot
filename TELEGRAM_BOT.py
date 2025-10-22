@@ -52,15 +52,16 @@ MENSAJES_BLOQUEO = {
 # CONFIGURACIÓN
 # ==========================
 BASE_DIR = Path(__file__).parent.resolve()
-DATA_PATH = BASE_DIR / "data" / "datos_historicos_prueba.json"  # Archivo multi-temporada
+DATA_PATH = BASE_DIR / "data" / "datos_historicos.json"  # Archivo multi-temporada
 USER_LIMITS_PATH = BASE_DIR / "data" / "user_limits.json"  # Archivo para guardar contadores
 TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = 
-TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+#TELEGRAM_TOKEN = 
+#"8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 # no se cual ew: "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-#TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
