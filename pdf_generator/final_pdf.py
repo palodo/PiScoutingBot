@@ -800,6 +800,24 @@ def formatear_numero_sin_salto(valor):
     except:
         return str(valor)
 
+
+def formatear_porcentaje_sin_salto(valor):
+    """
+    Formatea un porcentaje evitando saltos de línea.
+    Convierte 100.0% a 100% para evitar saltos de línea.
+    """
+    if pd.isna(valor):
+        return "0.0%"
+    
+    try:
+        if valor == 100.0:
+            return "100%"
+        else:
+            return f"{valor:.1f}%"
+    except:
+        return f"{valor}%"
+
+
 def crear_rankings_equipos(df_equipos):
     """
     Crea rankings de estadísticas de equipos.
@@ -1272,10 +1290,35 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
                     valor_texto = f"<b>{int(valor)}%</b>"
                 else:
                     valor_texto = f"<b>{valor:.1f}%</b>"
-            elif 'FG3A' in columna and 'PJ' in row.index:  # Para triples, mostrar intentos y porcentaje
-                intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
-                porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
-                valor_texto = f"<b>{intentos:.1f} ({porcentaje:.1f}%)</b>"
+            elif ('FG3A' in columna or 'FG3%' in columna) and 'PJ' in row.index:  # Para triples, mostrar intentos y porcentaje
+                print(f"\n🔍 DEBUG TRIPLES - Procesando fila:")
+                print(f"   📊 Título: '{titulo}'")
+                print(f"   📊 Columna: '{columna}'") 
+                print(f"   📊 Equipo: '{row['Equipo']}'")
+                print(f"   📊 FG3A (intentos): {row.get('FG3A', 'NO EXISTE')}")
+                print(f"   📊 FG3% (porcentaje): {row.get('FG3%', 'NO EXISTE')}")
+                print(f"   📊 PJ (partidos jugados): {row.get('PJ', 'NO EXISTE')}")
+                print(f"   📊 ¿'TRIPLES' in titulo? {'TRIPLES' in titulo}")
+                
+                if "TRIPLES" in titulo:  # Cambio a una verificación más genérica
+                    print(f"   ✅ ENTRANDO en lógica de triples!")
+                    # Para la tabla de triples: mostrar intentos por partido y porcentaje
+                    # Obtener intentos por partido desde FG3A
+                    intentos_por_partido = row['FG3A'] / row['PJ'] if row['PJ'] > 0 and 'FG3A' in row else 0
+                    porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
+                    print(f"   📈 Intentos por partido calculados: {intentos_por_partido:.1f}")
+                    print(f"   📈 Porcentaje obtenido: {porcentaje:.1f}%")
+                    if porcentaje == 100.0:
+                        valor_texto = f"<b>{intentos_por_partido:.1f}<br/>100%</b>"
+                    else:
+                        valor_texto = f"<b>{intentos_por_partido:.1f}<br/>{porcentaje:.1f}%</b>"
+                    print(f"   🎯 VALOR FINAL: {valor_texto}")
+                else:
+                    print(f"   ❌ NO entra en lógica de triples")
+                    # Para otras tablas: formato original
+                    intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
+                    porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
+                    valor_texto = f"<b>{intentos:.1f} ({porcentaje:.1f}%)</b>"
             else:
                 # Formato en negrita: sin decimales si es entero
                 valor_formateado = f"{int(valor)}" if valor == int(valor) else f"{valor:.1f}"
@@ -1536,7 +1579,7 @@ def crear_pagina_rankings(story, rankings, styles, equipo_url=None, df_resultado
             'Uso': {'titulo': 'PROTAGONISMO', 'emoji': '👑'},
             'Rebotes_Ofensivos': {'titulo': 'REB. OFENSIVO', 'emoji': '🚀'},
             'Asistencias': {'titulo': 'ASISTENCIAS', 'emoji': '🎯'},
-            'Tiros_Libres': {'titulo': 'TIROS LIBRES TIRADOS (%)', 'emoji': '🎯'},
+            'Tiros_Libres': {'titulo': 'TIROS LIBRES (TL/PJ - %)', 'emoji': '🎯'},
             'True_Shooting': {'titulo': 'EFIC. TIRO (TS%)', 'emoji': '📈'}
         }
         
@@ -1615,17 +1658,22 @@ def crear_pagina_rankings(story, rankings, styles, equipo_url=None, df_resultado
                 valor = jugador['AST/PJ']
             elif categoria == 'Tiros_Libres':
                 valor = jugador['FT%']
+                # Obtener también los tiros libres tirados por partido
+                tiros_libres_pp = jugador.get('FTA/PJ', 0) if 'FTA/PJ' in jugador else 0
             elif categoria == 'True_Shooting':
                 valor = jugador['TS%']
             
             # Formatear valor según categoría
             if categoria == 'Triples_Intentados':
                 porcentaje = jugador['FG3%'] if 'FG3%' in jugador and jugador['FG3%'] > 0 else 0
-                valor_texto = f"{valor:.1f}<br/>{porcentaje:.1f}%"
+                porcentaje_formateado = formatear_porcentaje_sin_salto(porcentaje)
+                valor_texto = f"{valor:.1f}<br/>{porcentaje_formateado}"
             elif categoria == 'Tiros_Libres':
-                valor_texto = f"{valor:.1f}%"
+                # Incluir tanto el porcentaje como los tiros tirados por partido
+                porcentaje_formateado = formatear_porcentaje_sin_salto(valor)
+                valor_texto = f"{tiros_libres_pp:.1f}<br/>{porcentaje_formateado}"
             elif categoria in ['True_Shooting', 'Uso']:
-                valor_texto = f"{valor:.1f}%"
+                valor_texto = formatear_porcentaje_sin_salto(valor)
             else:
                 valor_texto = f"{valor:.1f}"
             
@@ -2738,6 +2786,9 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     # ============== PÁGINA: ESTADÍSTICAS INDIVIDUALES ==============
     crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, styles, equipo_url, df_resultados, df_jugadores_norm)
     
+    # ============== PÁGINA: INSIGHTS DE JUGADORES ==============
+    crear_pagina_insights_jugadores(story, df_principales, titulo_style, styles, equipo_url, df_resultados)
+    
     # ============== PÁGINAS: GRÁFICAS DE TIRO (SHOT CHARTS) ==============
     # Nota: Los shot charts se generan en generar_pdf_final y se insertan aquí automáticamente
     # Esta sección es un marcador para el orden correcto de las páginas
@@ -3269,6 +3320,241 @@ def crear_pagina_historial_jugador(story, jugadores_list, titulo_style, styles):
         'Los valores con +/- indican las mejoras o declives respecto a la temporada actual.'
     )
     story.append(Paragraph(leyenda_text, leyenda_style))
+
+
+def crear_tablita_insight_jugador(jugador_data, numeros_jugadores=None):
+    """
+    Crea una tablita individual para insights del jugador con foto, nombre, número y espacio para anotaciones.
+    Usa la misma lógica de foto que estadísticas individuales.
+    AJUSTADO: Foto más pequeña y cabecera más fina.
+    
+    Args:
+        jugador_data: Serie con datos del jugador
+        numeros_jugadores: Dict con números de jugadores
+        
+    Returns:
+        Table: Tablita con el layout solicitado (más ancha y menos alta)
+    """
+    from reportlab.platypus import Table, TableStyle
+    from reportlab.lib.units import mm, inch
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    
+    # Obtener información básica del jugador
+    nombre_jugador = jugador_data.get('Jugador', 'N/A')
+    numero_jugador = buscar_numero_jugador(jugador_data, numeros_jugadores) if numeros_jugadores else None
+    jugador_id = str(jugador_data.get('ID', '')).strip()
+    
+    # Mostrar número si está disponible
+    if numero_jugador and numero_jugador.strip():
+        texto_nombre_numero = f"#{numero_jugador} - {nombre_jugador}"
+    else:
+        texto_nombre_numero = nombre_jugador
+    
+    # USAR LA MISMA LÓGICA DE FOTO QUE ESTADÍSTICAS INDIVIDUALES
+    foto_jugador = None
+    try:
+        # Método 1: Intentar usar get_player_photo_buffer si tenemos jugador_id
+        if jugador_id and jugador_id != 'nan':
+            try:
+                photo_buffer = get_player_photo_buffer(str(jugador_id))
+                if photo_buffer:
+                    # FOTO AÚN MÁS PEQUEÑA para formato ultra-compacto - Reducido de 18x22mm a 16x20mm
+                    foto_jugador = pil_buffer_to_reportlab_image(photo_buffer, width=16*mm, height=20*mm)
+                    print(f"   ✅ Foto cargada para insights: {nombre_jugador}")
+                else:
+                    print(f"   ⚠️ Buffer vacío para jugador_id: {jugador_id}")
+            except Exception as e:
+                print(f"   ❌ Error con get_player_photo_buffer para insights: {e}")
+        
+        # Método 2: Si no funciona el buffer, intentar cargar desde directorio de fotos
+        if foto_jugador is None:
+            from pathlib import Path
+            data_dir = Path(__file__).parent.parent / "data"
+            cache_dir = data_dir / "player_photos_cache"
+            
+            # Buscar foto por ID
+            if jugador_id and jugador_id != 'nan':
+                photo_path = cache_dir / f"{jugador_id}.jpg"
+                if photo_path.exists():
+                    # FOTO AÚN MÁS PEQUEÑA para formato ultra-compacto - Reducido de 18x22mm a 16x20mm
+                    foto_jugador = ReportLabImage(str(photo_path), width=16*mm, height=20*mm)
+                    print(f"   ✅ Foto cargada desde cache para insights: {nombre_jugador}")
+    
+    except Exception as e:
+        print(f"⚠️  Error al cargar foto de {nombre_jugador} para insights: {e}")
+    
+    # Si no hay foto, crear placeholder más pequeño
+    if foto_jugador is None:
+        from reportlab.platypus import Paragraph
+        from reportlab.lib.styles import ParagraphStyle
+        placeholder_style = ParagraphStyle(
+            'PlaceholderFoto',
+            fontSize=7,  # Reducido de 8 a 7
+            textColor=colors.HexColor('#718096'),
+            alignment=TA_CENTER,
+            fontName='Helvetica',
+        )
+        foto_jugador = Paragraph("Sin<br/>foto", placeholder_style)
+    
+    # Crear contenido de la tablita - FORMATO MÁS ANCHO Y MENOS ALTO
+    # Estructura: [nombre_numero (span 2 columnas)]
+    #            [foto | espacio_anotaciones]
+    
+    # Fila 1: Encabezado con nombre y número
+    fila_nombre = [texto_nombre_numero, ""]
+    
+    # Fila 2: Foto y espacio para anotaciones
+    fila_contenido = [foto_jugador, ""]
+    
+    # Crear tabla con el contenido - DIMENSIONES MÁS ANCHAS Y MENOS ALTAS
+    contenido_tablita = [fila_nombre, fila_contenido]
+    
+    # Aumentar ancho total y reducir altura AÚN MÁS para que quepan 4 filas
+    tablita = Table(contenido_tablita, 
+                   colWidths=[28*mm, 102*mm],  # Ajustado de [30mm, 100mm] a [28mm, 102mm] = 130mm total
+                   rowHeights=[7*mm, 25*mm])   # ALTURA TOTAL REDUCIDA: [7mm, 25mm] = 32mm total (vs 35mm anterior)
+    
+    # Estilo de la tablita
+    tablita.setStyle(TableStyle([
+        # Combinar columnas para el nombre en la primera fila
+        ('SPAN', (0, 0), (1, 0)),
+        
+        # Alineación
+        ('ALIGN', (0, 0), (1, 0), 'CENTER'),  # Nombre centrado
+        ('VALIGN', (0, 0), (1, 0), 'MIDDLE'),  # Nombre centrado verticalmente
+        ('ALIGN', (0, 1), (0, 1), 'CENTER'),   # Foto centrada
+        ('VALIGN', (0, 1), (0, 1), 'MIDDLE'),  # Foto centrada verticalmente
+        ('ALIGN', (1, 1), (1, 1), 'LEFT'),     # Espacio anotaciones alineado a la izquierda
+        ('VALIGN', (1, 1), (1, 1), 'TOP'),     # Espacio anotaciones alineado arriba
+        
+        # Fuentes y colores - TEXTO MÁS GRANDE PARA MEJOR LEGIBILIDAD
+        ('FONTNAME', (0, 0), (1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (1, 0), 9),  # Aumentado de 7 a 9 para mejor legibilidad del nombre y número
+        ('TEXTCOLOR', (0, 0), (1, 0), colors.white),
+        ('BACKGROUND', (0, 0), (1, 0), colors.HexColor('#4a5568')),  # Fondo gris oscuro para el nombre
+        
+        # Bordes NEGROS como en estadísticas individuales
+        ('GRID', (0, 0), (1, 1), 1, colors.black),  # Cambiado de gris claro a negro
+        ('LINEWIDTH', (0, 0), (1, 1), 1),
+        
+        # Padding ultra-reducido para máxima compacidad
+        ('TOPPADDING', (0, 0), (1, 1), 1),     # Reducido de 2 a 1
+        ('BOTTOMPADDING', (0, 0), (1, 1), 1),  # Reducido de 2 a 1
+        ('LEFTPADDING', (0, 0), (1, 1), 3),    # Reducido de 4 a 3
+        ('RIGHTPADDING', (0, 0), (1, 1), 3),   # Reducido de 4 a 3
+        
+        # Fondo blanco para el área de anotaciones
+        ('BACKGROUND', (1, 1), (1, 1), colors.white),
+    ]))
+    
+    return tablita
+
+
+def crear_pagina_insights_jugadores(story, df_principales, titulo_style, styles, equipo_url=None, df_resultados=None):
+    """
+    Crea página de "Comentarios Jugadores" en formato landscape con 8 tablitas (2 columnas x 4 filas).
+    Cada tablita contiene foto del jugador, nombre, número y espacio para anotaciones del entrenador.
+    
+    Args:
+        story: Lista de elementos del PDF
+        df_principales: DataFrame con jugadores principales
+        titulo_style: Estilo para el título
+        styles: Estilos de ReportLab
+        equipo_url: URL del equipo para obtener números de jugadores
+        df_resultados: DataFrame con resultados
+    """
+    from reportlab.platypus import PageBreak, Paragraph, Spacer, Table, TableStyle, NextPageTemplate
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.units import inch, mm
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    
+    # Obtener números de jugadores si está disponible
+    numeros_jugadores = {}
+    if equipo_url:
+        try:
+            numeros_jugadores = obtener_numeros_jugadores_equipo(equipo_url, df_resultados)
+            print(f"✅ Números de jugadores obtenidos para insights: {len(numeros_jugadores.get('por_id', {}))}")
+        except Exception as e:
+            print(f"⚠️  Error al obtener números de jugadores para insights: {e}")
+            numeros_jugadores = {}
+    
+    # Cambiar a plantilla landscape
+    story.append(NextPageTemplate('landscape'))
+    story.append(PageBreak())
+    
+    # USAR EL MISMO ESTILO DE TÍTULO QUE ESTADÍSTICAS INDIVIDUALES
+    titulo_insights_style = ParagraphStyle(
+        'TituloInsights',
+        parent=titulo_style,
+        fontSize=20,  # Mismo tamaño que estadísticas individuales
+        textColor=colors.HexColor('#2d3748'),
+        alignment=TA_CENTER,
+        spaceAfter=15,  # Mismo espacio que estadísticas individuales
+        fontName='Helvetica-Bold',
+    )
+    
+    titulo = Paragraph("COMENTARIOS JUGADORES", titulo_insights_style)
+    story.append(titulo)
+    
+    # REDUCIR ESPACIADOR - Usar mismo que estadísticas individuales
+    story.append(Spacer(1, 0.2*inch))  # Reducido de 20 a 0.2*inch = mismo que estadísticas individuales
+    
+    # Seleccionar los 8 jugadores con mejor valoración por partido
+    if 'VAL/PJ' in df_principales.columns:
+        jugadores_insights = df_principales.sort_values('VAL/PJ', ascending=False).head(8).copy()
+    else:
+        # Fallback a los primeros 8 si no hay VAL/PJ
+        jugadores_insights = df_principales.head(8).copy()
+    
+    print(f"🏀 Seleccionados {len(jugadores_insights)} jugadores para insights (ordenados por valoración)")
+    
+    # Crear tablitas
+    tablitas = []
+    for idx, jugador_row in jugadores_insights.iterrows():
+        tablita = crear_tablita_insight_jugador(jugador_row, numeros_jugadores)
+        tablitas.append(tablita)
+    
+    # Rellenar con tablitas vacías si hay menos de 8 jugadores
+    while len(tablitas) < 8:
+        # Crear tablita vacía
+        jugador_vacio = {
+            'Jugador': '---',
+            'ID': ''
+        }
+        tablita_vacia = crear_tablita_insight_jugador(jugador_vacio, numeros_jugadores)
+        tablitas.append(tablita_vacia)
+    
+    # Organizar en grid 2x4 (2 columnas, 4 filas)
+    # HACER LAS TABLITAS MÁS ANCHAS Y MENOS ALTAS
+    grid_data = []
+    for i in range(0, 8, 2):  # De 2 en 2 para crear filas
+        fila = [tablitas[i], tablitas[i+1] if i+1 < len(tablitas) else ""]
+        grid_data.append(fila)
+    
+    # Crear tabla principal con el grid - REDUCIR MÁS LA ALTURA PARA QUE QUEPAN 4 FILAS
+    tabla_principal = Table(grid_data, 
+                           colWidths=[135*mm, 135*mm],  # Mantener ancho
+                           rowHeights=[35*mm, 35*mm, 35*mm, 35*mm])  # REDUCIDO de 40mm a 35mm por fila
+    
+    # Estilo para la tabla principal
+    tabla_principal.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 5),   # Reducido padding
+        ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+    ]))
+    
+    # Añadir la tabla al story
+    story.append(tabla_principal)
+    
+    # Espaciador final más pequeño
+    story.append(Spacer(1, 0.2*inch))
+    
+    print(f"✅ Página de Comentarios Jugadores creada con {len(jugadores_insights)} jugadores")
 
 
 def crear_pagina_estadisticas_individuales(story, df_principales, titulo_style, styles, equipo_url=None, df_resultados=None, df_jugadores_norm=None):
