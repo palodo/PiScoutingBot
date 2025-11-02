@@ -11,13 +11,6 @@
       "remaining_generations": 24,
       "name": "Iván"
     },
-    "2088798370": {
-      "authorized": true,
-      "admin": true,
-      "max_generations": 50,
-      "remaining_generations": 38,
-      "name": "Admin"
-    },
     "1939509844": {
       "authorized": true,
       "admin": false,
@@ -45,6 +38,13 @@
       "max_generations": 50,
       "remaining_generations": 50,
       "name": "User 8366458801"
+    },
+    "2088798370": {
+      "authorized": true,
+      "admin": false,
+      "max_generations": 3,
+      "remaining_generations": 3,
+      "name": "PABLO"
     }
   }
 }

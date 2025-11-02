@@ -58,9 +58,9 @@ TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = 
-#TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 # no se cual ew: "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+#TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
@@ -1839,20 +1839,24 @@ async def handle_access_request(update: Update, context: ContextTypes.DEFAULT_TY
         safe_username = escape_markdown(username)
         safe_team_name = escape_markdown(team_name)
         
+        # Truncar team_name si es muy largo para callback_data (max 64 bytes)
+        # Formato: approve_access::user_id::generations::team_name
+        team_name_truncated = team_name[:30] if len(team_name) > 30 else team_name
+        
         # Crear botones para aprobar con diferentes cantidades de generaciones
         keyboard = [
             [
-                InlineKeyboardButton("✅ 2 PDFs", callback_data=f"approve_access::{user_id}::2"),
-                InlineKeyboardButton("✅ 3 PDFs", callback_data=f"approve_access::{user_id}::3"),
-                InlineKeyboardButton("✅ 4 PDFs", callback_data=f"approve_access::{user_id}::4"),
+                InlineKeyboardButton("✅ 2 PDFs", callback_data=f"approve_access::{user_id}::2::{team_name_truncated}"),
+                InlineKeyboardButton("✅ 3 PDFs", callback_data=f"approve_access::{user_id}::3::{team_name_truncated}"),
+                InlineKeyboardButton("✅ 4 PDFs", callback_data=f"approve_access::{user_id}::4::{team_name_truncated}"),
             ],
             [
-                InlineKeyboardButton("✅ 5 PDFs", callback_data=f"approve_access::{user_id}::5"),
-                InlineKeyboardButton("✅ 6 PDFs", callback_data=f"approve_access::{user_id}::6"),
-                InlineKeyboardButton("✅ 7 PDFs", callback_data=f"approve_access::{user_id}::7"),
+                InlineKeyboardButton("✅ 5 PDFs", callback_data=f"approve_access::{user_id}::5::{team_name_truncated}"),
+                InlineKeyboardButton("✅ 6 PDFs", callback_data=f"approve_access::{user_id}::6::{team_name_truncated}"),
+                InlineKeyboardButton("✅ 7 PDFs", callback_data=f"approve_access::{user_id}::7::{team_name_truncated}"),
             ],
             [
-                InlineKeyboardButton("❌ Rechazar", callback_data=f"reject_access::{user_id}"),
+                InlineKeyboardButton("❌ Rechazar", callback_data=f"reject_access::{user_id}::{team_name_truncated}"),
             ]
         ]
         
@@ -1898,40 +1902,52 @@ async def handle_access_approval(update: Update, context: ContextTypes.DEFAULT_T
     action = parts[0]  # "approve_access" o "reject_access"
     target_user_id = int(parts[1])
     
+    # Obtener el nombre del equipo si está disponible (nuevo formato con team_name)
+    team_name = parts[3] if len(parts) > 3 else f"User {target_user_id}"
+    
     if action == "approve_access":
         generations = int(parts[2])
         
-        # Autorizar al usuario y asignar generaciones
+        # Autorizar al usuario y asignar generaciones CON EL NOMBRE DEL EQUIPO
         update_user_permissions(
             user_id=target_user_id,
             authorized=True,
             admin=False,
             max_generations=generations,
-            name=f"User {target_user_id}"  # Se actualizará cuando use el bot
+            name=team_name  # ✅ Ahora guarda el nombre del equipo correctamente
         )
         
-        # Actualizar mensaje del admin
+        # Actualizar mensaje del admin para confirmar
         await query.edit_message_text(
             f"{query.message.text}\n\n"
             f"✅ **APROBADO** por @{update.effective_user.username or 'admin'}\n"
-            f"📊 Generaciones asignadas: {generations}",
+            f"📊 Generaciones asignadas: {generations}\n"
+            f"📝 Equipo guardado: {team_name}",
             parse_mode='Markdown'
         )
         
-        # Notificar al usuario aprobado
+        # ✅ Notificar al usuario aprobado INMEDIATAMENTE
         try:
             await context.bot.send_message(
                 chat_id=target_user_id,
                 text=(
                     f"🎉 **¡Acceso aprobado!**\n\n"
+                    f"Tu equipo **{team_name}** ha sido registrado.\n"
                     f"Ya puedes usar el bot PiScouting.\n"
                     f"Tienes **{generations} generaciones** de PDFs disponibles.\n\n"
                     f"Escribe /start para comenzar."
                 ),
                 parse_mode='Markdown'
             )
+            print(f"✅ Notificación de aprobación enviada al usuario {target_user_id} ({team_name})")
         except Exception as e:
-            print(f"Error notificando aprobación al usuario {target_user_id}: {e}")
+            print(f"❌ Error notificando aprobación al usuario {target_user_id}: {e}")
+            # Informar al admin que hubo un problema
+            await context.bot.send_message(
+                chat_id=ADMIN_LOG_CHAT_ID,
+                text=f"⚠️ No se pudo notificar al usuario {target_user_id}. Puede que haya bloqueado el bot.",
+                parse_mode='Markdown'
+            )
         
     elif action == "reject_access":
         # Actualizar mensaje del admin
@@ -1941,7 +1957,7 @@ async def handle_access_approval(update: Update, context: ContextTypes.DEFAULT_T
             parse_mode='Markdown'
         )
         
-        # Notificar al usuario rechazado
+        # ✅ Notificar al usuario rechazado INMEDIATAMENTE
         try:
             await context.bot.send_message(
                 chat_id=target_user_id,
@@ -1952,8 +1968,9 @@ async def handle_access_approval(update: Update, context: ContextTypes.DEFAULT_T
                 ),
                 parse_mode='Markdown'
             )
+            print(f"✅ Notificación de rechazo enviada al usuario {target_user_id}")
         except Exception as e:
-            print(f"Error notificando rechazo al usuario {target_user_id}: {e}")
+            print(f"❌ Error notificando rechazo al usuario {target_user_id}: {e}")
 
 
 # ==========================
