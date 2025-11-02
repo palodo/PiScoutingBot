@@ -40,6 +40,10 @@ class FEBScrapper:
         "1ª FEB": 1,
         "2ª FEB": 2,
         "3ª FEB": 3,
+        "LF ENDESA": 4,
+        "LF Challenge": 67,
+        "LF2": 9,
+
     }
 
     def __init__(self, season: str = "2024", pause: float = 1.0, session: Optional[requests.Session] = None):
@@ -152,13 +156,15 @@ class FEBScrapper:
         return pd.DataFrame(todos_los_equipos)
 
     def obtener_todos_los_equipos_feb(self) -> pd.DataFrame:
-        """Obtiene todos los equipos de 1ª FEB, 2ª FEB y 3ª FEB (Liga Regular)."""
+        """Obtiene todos los equipos de todas las categorías FEB (masculinas y femeninas) en Liga Regular."""
         print(f"🏀 Iniciando obtención de equipos de todas las categorías FEB...")
         dfs = []
         total_equipos = 0
         
-        for i, categoria in enumerate(["1ª FEB", "2ª FEB", "3ª FEB"], 1):
-            print(f"📊 Procesando categoría {i}/3: {categoria}")
+        # Usar todas las categorías definidas en CATEGORY_URLS
+        categorias = list(self.CATEGORY_URLS.keys())
+        for i, categoria in enumerate(categorias, 1):
+            print(f"📊 Procesando categoría {i}/{len(categorias)}: {categoria}")
             print(f"   🔍 Obteniendo grupos y equipos...")
             
             df_cat = self.get_equipos_dataframe_for_category(categoria, only_liga_regular=True)
@@ -201,7 +207,7 @@ class FEBScrapper:
         
         # Para Segunda FEB 2025: necesitamos procesar jugadores con GR+LR especialmente
         if self.season == "2025" and categoria == "2ª FEB":
-            return self._procesar_segunda_feb_2025(rows)
+            return self._procesar_segunda_feb_2025(rows) #Aqui habrá que haceerlo con los femeninos tambien
         
         # Procesamiento normal para otras categorías/años
         for row in rows:
@@ -779,7 +785,7 @@ def _demo():
     - Genera JSON por ligas para EBA (Liga Regular).
     - Genera JSON completo para 1ª FEB, 2ª FEB y EBA.
     """
-    scraper = FEBScrapper(season="2025", pause=1.0)
+    scraper = FEBScrapper(season="2024", pause=1.0)
 
     # Por ligas: EBA (Liga Regular)
     #print("Obteniendo equipos EBA (Liga Regular)...")
@@ -789,7 +795,7 @@ def _demo():
 
     # Completa: 1ª FEB, 2ª FEB y EBA (Liga Regular)
     print("\nCreando base de datos completa FEB...")
-    scraper.crear_base_datos_completa_feb(nombre_archivo="2025.json")
+    scraper.crear_base_datos_completa_feb(nombre_archivo="femenino.json")
 
 
 if __name__ == "__main__":
