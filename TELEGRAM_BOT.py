@@ -58,8 +58,7 @@ TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = 
-#TELEGRAM_TOKEN = 
-#"8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
+#TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 # no se cual ew: "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
@@ -1827,6 +1826,19 @@ async def handle_access_request(update: Update, context: ContextTypes.DEFAULT_TY
     
     # Enviar notificación a los administradores
     try:
+        # Función auxiliar para escapar caracteres especiales de Markdown
+        def escape_markdown(text):
+            """Escapa caracteres especiales de Markdown v2"""
+            special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+            for char in special_chars:
+                text = text.replace(char, f'\\{char}')
+            return text
+        
+        # Escapar los datos del usuario para Markdown
+        safe_full_name = escape_markdown(user_full_name)
+        safe_username = escape_markdown(username)
+        safe_team_name = escape_markdown(team_name)
+        
         # Crear botones para aprobar con diferentes cantidades de generaciones
         keyboard = [
             [
@@ -1847,11 +1859,11 @@ async def handle_access_request(update: Update, context: ContextTypes.DEFAULT_TY
         admin_message = (
             f"🔔 **NUEVA SOLICITUD DE ACCESO**\n\n"
             f"👤 **Usuario:**\n"
-            f"• Nombre: {user_full_name}\n"
-            f"• Username: @{username}\n"
+            f"• Nombre: {safe_full_name}\n"
+            f"• Username: @{safe_username}\n"
             f"• User ID: `{user_id}`\n\n"
             f"🏀 **Equipo solicitado:**\n"
-            f"• {team_name}\n\n"
+            f"• {safe_team_name}\n\n"
             f"**¿Aprobar acceso?**\n"
             f"Selecciona cuántas generaciones asignar:"
         )
