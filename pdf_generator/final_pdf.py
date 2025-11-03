@@ -855,6 +855,9 @@ def crear_rankings_equipos(df_equipos):
     # Porcentaje de tiros de campo
     rankings['FG_Percentage_Equipo'] = df_equipos.sort_values('FG%', ascending=False).reset_index(drop=True)
     
+    # Porcentaje de tiros de 2
+    rankings['FG2_Percentage_Equipo'] = df_equipos.sort_values('FG2%', ascending=False).reset_index(drop=True)
+    
     # Porcentaje de triples
     rankings['FG3_Percentage_Equipo'] = df_equipos.sort_values('FG3%', ascending=False).reset_index(drop=True)
     
@@ -940,11 +943,14 @@ def crear_pagina_rankings_equipos(story, rankings_equipos, df_equipos, equipo_se
     nota = Paragraph("* Los datos mostrados son promedios por partido de la temporada", nota_style)
     story.append(nota)
 
-    # Función para crear ranking con tabla premium - MOSTRAR TODOS LOS EQUIPOS
+    # Función para crear ranking con tabla premium - LIMITAR A 12 EQUIPOS MÁXIMO
     def crear_ranking_premium(titulo, df_sorted, columna, color_header):
-        # MOSTRAR TODOS LOS EQUIPOS - Sin límites
-        # No limitamos el número de equipos, se muestran todos
-        pass  # No hay filtrado, se usan todos los equipos
+        # LIMITAR A 12 EQUIPOS para que quepa en la página landscape
+        MAX_EQUIPOS = 12
+        total_equipos = len(df_sorted)
+        if total_equipos > MAX_EQUIPOS:
+            df_sorted = df_sorted.head(MAX_EQUIPOS)
+            print(f"⚠️  Tabla '{titulo}' (primera página) limitada a {MAX_EQUIPOS} equipos (había {total_equipos} totales)")
         
         # Función para acortar nombres largos (versión simplificada)
         def acortar_nombre(nombre, max_chars=22):
@@ -1236,11 +1242,14 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
     nota = Paragraph("* Los porcentajes mostrados son promedios de la temporada", nota_style)
     story.append(nota)
 
-    # Función para crear ranking con tabla premium - MOSTRAR TODOS LOS EQUIPOS
+    # Función para crear ranking con tabla premium - LIMITAR A 12 EQUIPOS MÁXIMO
     def crear_ranking_premium(titulo, df_sorted, columna, color_header):
-        # MOSTRAR TODOS LOS EQUIPOS - Sin límites
-        # No limitamos el número de equipos, se muestran todos
-        pass  # No hay filtrado, se usan todos los equipos
+        # LIMITAR A 12 EQUIPOS para que quepa en la página landscape
+        MAX_EQUIPOS = 12
+        total_equipos = len(df_sorted)
+        if total_equipos > MAX_EQUIPOS:
+            df_sorted = df_sorted.head(MAX_EQUIPOS)
+            print(f"⚠️  Tabla '{titulo}' limitada a {MAX_EQUIPOS} equipos (había {total_equipos} totales)")
         
         # Función para acortar nombres largos (versión simplificada)
         def acortar_nombre(nombre, max_chars=22):
@@ -1283,46 +1292,93 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
             nombre_mostrar = f"{ranking_bold} {nombre_acortado}"
             es_nuestro = equipo_nombre == equipo_seleccionado  # ✅ COMPARAR CON NOMBRE ORIGINAL
             
+            # DEBUG LOGS - VERSIÓN MEJORADA
+            if i < 3:  # Solo mostrar primeros 3 equipos para no saturar
+                print(f"\n{'='*70}")
+                print(f"🔍 DEBUG CONTINUACION - Procesando equipo {i+1} de {len(df_sorted)}")
+                print(f"{'='*70}")
+                print(f"   � Título tabla: '{titulo}'")
+                print(f"   � Columna solicitada: '{columna}'") 
+                print(f"   � Equipo: '{row['Equipo']}'")
+                print(f"   � Valor en columna '{columna}': {valor}")
+                print(f"\n   📊 Datos del equipo:")
+                print(f"      - PJ (partidos): {row.get('PJ', 'NO EXISTE')}")
+                print(f"      - FG3A (intentos triples): {row.get('FG3A', 'NO EXISTE')}")
+                print(f"      - FG3% (porcentaje triples): {row.get('FG3%', 'NO EXISTE')}")
+                print(f"\n   � Condiciones evaluadas:")
+                print(f"      - ¿columna in ['FG%', 'FG3%', 'FT%', 'Win%']? {columna in ['FG%', 'FG3%', 'FT%', 'Win%']}")
+                print(f"      - ¿'FG3A' in columna? {'FG3A' in columna}")
+                print(f"      - ¿'FG3%' in columna? {'FG3%' in columna}")
+                print(f"      - ¿'PJ' in row.index? {'PJ' in row.index if hasattr(row, 'index') else 'NO INDEX'}")
+                print(f"      - ¿'TRIPLES' in titulo? {'TRIPLES' in titulo}")
+            
             # Formatear número en negrita
-            if columna in ['FG%', 'FG3%', 'FT%', 'Win%']:
+            # ⚠️ IMPORTANTE: Primero verificar si es tabla de TRIPLES antes de otras condiciones
+            if ('FG3A' in columna or 'FG3%' in columna) and 'PJ' in row.index and "TRIPLES" in titulo:
+                # 🎯 LÓGICA ESPECÍFICA PARA TABLA DE TRIPLES
+                if i < 3:
+                    print(f"\n   🎯🎯🎯 RAMA TRIPLES: ENTRANDO EN LÓGICA DE TABLA DE TRIPLES! 🎯🎯🎯")
+                
+                # Para la tabla de triples: mostrar intentos por partido y porcentaje
+                # Obtener intentos por partido desde FG3A
+                intentos_por_partido = row['FG3A'] / row['PJ'] if row['PJ'] > 0 and 'FG3A' in row else 0
+                porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
+                
+                if i < 3:
+                    print(f"      📊 FG3A (total intentos): {row.get('FG3A', 'NO EXISTE')}")
+                    print(f"      📊 PJ (partidos): {row.get('PJ', 'NO EXISTE')}")
+                    print(f"      ➗ Cálculo: {row.get('FG3A', 0)} / {row.get('PJ', 1)} = {intentos_por_partido:.1f} intentos/partido")
+                    print(f"      📈 Porcentaje: {porcentaje:.1f}%")
+                
+                # Formato en una sola línea: "34.0 41.2%"
+                if porcentaje == 100.0:
+                    valor_texto = f"<b>{intentos_por_partido:.1f} 100%</b>"
+                else:
+                    valor_texto = f"<b>{intentos_por_partido:.1f} {porcentaje:.1f}%</b>"
+                
+                if i < 3:
+                    print(f"   🎯 Valor FINAL formateado (una línea):")
+                    print(f"      Formato: {intentos_por_partido:.1f} {porcentaje:.1f}%")
+                    print(f"      HTML: {valor_texto}")
+                    
+            elif columna in ['FG%', 'FG3%', 'FT%', 'Win%', 'eFG%']:
+                # Condición de porcentajes (para otras tablas que no sean TRIPLES)
+                if i < 3:
+                    print(f"\n   ✅ RAMA 1: Entrando en condición de PORCENTAJES (no es tabla de triples)")
                 # Si es 100.0%, mostrar como 100% sin decimal
                 if valor == 100.0:
                     valor_texto = f"<b>{int(valor)}%</b>"
                 else:
                     valor_texto = f"<b>{valor:.1f}%</b>"
-            elif ('FG3A' in columna or 'FG3%' in columna) and 'PJ' in row.index:  # Para triples, mostrar intentos y porcentaje
-                print(f"\n🔍 DEBUG TRIPLES - Procesando fila:")
-                print(f"   📊 Título: '{titulo}'")
-                print(f"   📊 Columna: '{columna}'") 
-                print(f"   📊 Equipo: '{row['Equipo']}'")
-                print(f"   📊 FG3A (intentos): {row.get('FG3A', 'NO EXISTE')}")
-                print(f"   📊 FG3% (porcentaje): {row.get('FG3%', 'NO EXISTE')}")
-                print(f"   📊 PJ (partidos jugados): {row.get('PJ', 'NO EXISTE')}")
-                print(f"   📊 ¿'TRIPLES' in titulo? {'TRIPLES' in titulo}")
-                
-                if "TRIPLES" in titulo:  # Cambio a una verificación más genérica
-                    print(f"   ✅ ENTRANDO en lógica de triples!")
-                    # Para la tabla de triples: mostrar intentos por partido y porcentaje
-                    # Obtener intentos por partido desde FG3A
-                    intentos_por_partido = row['FG3A'] / row['PJ'] if row['PJ'] > 0 and 'FG3A' in row else 0
-                    porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
-                    print(f"   📈 Intentos por partido calculados: {intentos_por_partido:.1f}")
-                    print(f"   📈 Porcentaje obtenido: {porcentaje:.1f}%")
-                    if porcentaje == 100.0:
-                        valor_texto = f"<b>{intentos_por_partido:.1f}<br/>100%</b>"
-                    else:
-                        valor_texto = f"<b>{intentos_por_partido:.1f}<br/>{porcentaje:.1f}%</b>"
-                    print(f"   🎯 VALOR FINAL: {valor_texto}")
-                else:
-                    print(f"   ❌ NO entra en lógica de triples")
-                    # Para otras tablas: formato original
-                    intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
-                    porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
-                    valor_texto = f"<b>{intentos:.1f} ({porcentaje:.1f}%)</b>"
+                if i < 3:
+                    print(f"   🎯 Valor formateado (solo porcentaje): {valor_texto}")
+            
+            elif columna == 'FTr':
+                # Para FTr mostrar como decimal (ej: 0.22)
+                if i < 3:
+                    print(f"\n   ✅ RAMA FTr: Mostrando como decimal")
+                valor_texto = f"<b>{valor:.2f}</b>"
+                if i < 3:
+                    print(f"   🎯 Valor formateado (decimal): {valor_texto}")
+                    
+            elif ('FG3A' in columna or 'FG3%' in columna) and 'PJ' in row.index:
+                # Para otras tablas con estadísticas de triples (no la tabla principal de TRIPLES)
+                if i < 3:
+                    print(f"\n   ✅ RAMA 2: Formato alternativo para estadísticas de triples")
+                intentos = valor / row['PJ'] if row['PJ'] > 0 else 0
+                porcentaje = row['FG3%'] if 'FG3%' in row and pd.notna(row['FG3%']) else 0
+                valor_texto = f"<b>{intentos:.1f} ({porcentaje:.1f}%)</b>"
+                if i < 3:
+                    print(f"   🎯 Valor formateado: {valor_texto}")
+                    
             else:
+                if i < 3:
+                    print(f"\n   ✅ RAMA 3: Formato numérico simple")
                 # Formato en negrita: sin decimales si es entero
                 valor_formateado = f"{int(valor)}" if valor == int(valor) else f"{valor:.1f}"
                 valor_texto = f"<b>{valor_formateado}</b>"
+                if i < 3:
+                    print(f"   🎯 Valor formateado (número): {valor_texto}")
             
             # Estilos con ranking y valores en negrita
             if es_nuestro:
@@ -1417,15 +1473,20 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
     # Seleccionar las 4 nuevas estadísticas
     rankings_premium = []
     
-    # 1. Tiros libres
-    if 'FT_Percentage_Equipo' in rankings_equipos:
-        ranking_tl = crear_ranking_premium(
-            "🎯 TIROS LIBRES", 
-            rankings_equipos['FT_Percentage_Equipo'], 
-            'FT%', 
+    # 1. eFG% (Porcentaje de tiro efectivo)
+    if 'FG_Percentage_Equipo' in rankings_equipos:
+        # Calcular eFG% para cada equipo: (FGM + 0.5 * 3PM) / FGA
+        df_efg = rankings_equipos['FG_Percentage_Equipo'].copy()
+        df_efg['eFG%'] = ((df_efg['FGM'] + 0.5 * df_efg['FG3M']) / df_efg['FGA'] * 100).round(1)
+        df_efg_sorted = df_efg.sort_values('eFG%', ascending=False).reset_index(drop=True)
+        
+        ranking_efg = crear_ranking_premium(
+            "📊 eFG% (TIRO EFECTIVO)", 
+            df_efg_sorted, 
+            'eFG%', 
             colors.HexColor('#4a5568')  # Gris oscuro uniforme
         )
-        rankings_premium.append(ranking_tl)
+        rankings_premium.append(ranking_efg)
     
     # 2. Robos
     if 'Robos_Equipo' in rankings_equipos:
@@ -1447,15 +1508,20 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
         )
         rankings_premium.append(ranking_tc)
     
-    # 4. Triples
-    if 'Triples_Equipo' in rankings_equipos:
-        ranking_triples = crear_ranking_premium(
-            "🎯 TRIPLES",
-            rankings_equipos['Triples_Equipo'],
-            'FG3%',
+    # 4. FTr (Ratio de tiros libres)
+    if 'FT_Percentage_Equipo' in rankings_equipos:
+        # Calcular FTr para cada equipo: FTA / FGA
+        df_ftr = rankings_equipos['FT_Percentage_Equipo'].copy()
+        df_ftr['FTr'] = (df_ftr['FTA'] / df_ftr['FGA']).round(2)
+        df_ftr_sorted = df_ftr.sort_values('FTr', ascending=False).reset_index(drop=True)
+        
+        ranking_ftr = crear_ranking_premium(
+            "⚡ FTr (AGRESIVIDAD)",
+            df_ftr_sorted,
+            'FTr',
             colors.HexColor('#4a5568')  # Gris oscuro uniforme
         )
-        rankings_premium.append(ranking_triples)
+        rankings_premium.append(ranking_ftr)
     
     # Crear separador para poner entre tablas
     separador = Table([[""],], colWidths=[0.4*inch])
@@ -1467,7 +1533,7 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
         ancho_tabla = 2.3*inch  # Mismo tamaño que en COMPARATIVA
         espacio_entre = 0.4*inch  # Separador entre tablas
         
-        # UNA SOLA FILA con las 4 tablas: TIROS LIBRES | ROBOS | TIROS DE CAMPO | TRIPLES
+        # UNA SOLA FILA con las 4 tablas: eFG% | ROBOS | TIROS DE CAMPO | FTr
         fila_completa = Table([[rankings_premium[0], separador, rankings_premium[1], separador, rankings_premium[2], separador, rankings_premium[3]]], 
                              colWidths=[ancho_tabla, espacio_entre, ancho_tabla, espacio_entre, ancho_tabla, espacio_entre, ancho_tabla])
         fila_completa.setStyle(TableStyle([
@@ -1507,6 +1573,268 @@ def crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_equip
     
     # Reducir espacio final
     story.append(Spacer(1, 0.2*inch))  # Reducido de 0.5 a 0.2
+
+
+def crear_pagina_rankings_tiros(story, rankings_equipos, df_equipos, equipo_seleccionado, styles):
+    """
+    Crea una página adicional con tablas anchas para TIROS LIBRES y TRIPLES
+    Formato ancho: Muestra tanto intentos como porcentaje en la misma línea
+    """
+    from reportlab.lib.units import inch
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER
+    from reportlab.platypus import Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus.doctemplate import NextPageTemplate
+    import pandas as pd
+
+    # Solo crear la página si hay datos
+    if not rankings_equipos or len(df_equipos) <= 1:
+        return
+    
+    # Salto de página y asegurar landscape
+    story.append(NextPageTemplate('landscape'))
+    story.append(PageBreak())
+    
+    # Título principal
+    titulo_style = ParagraphStyle(
+        'TituloEquipos',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor('#2d3748'),
+        alignment=TA_CENTER,
+        spaceAfter=20,
+        fontName='Helvetica-Bold',
+    )
+    
+    titulo = Paragraph("RANKINGS DE EQUIPOS - CONTINUACIÓN", titulo_style)
+    story.append(titulo)
+    
+    # Nota explicativa
+    nota_style = ParagraphStyle(
+        'NotaRankings',
+        fontSize=8,
+        textColor=colors.HexColor('#666666'),
+        alignment=TA_CENTER,
+        fontName='Helvetica',
+        spaceAfter=15,
+    )
+    nota = Paragraph("* Valores mostrados: (Intentos por partido) Porcentaje de acierto", nota_style)
+    story.append(nota)
+    
+    # Función para crear tabla ancha con intentos + porcentaje (MISMO FORMATO QUE OTRAS TABLAS)
+    def crear_ranking_ancho(titulo, df_sorted, columna_intentos, columna_pct, color_header, emoji):
+        MAX_EQUIPOS = 12
+        total_equipos = len(df_sorted)
+        if total_equipos > MAX_EQUIPOS:
+            df_sorted = df_sorted.head(MAX_EQUIPOS)
+            print(f"⚠️  Tabla '{titulo}' limitada a {MAX_EQUIPOS} equipos (había {total_equipos} totales)")
+        
+        def acortar_nombre(nombre, max_chars=22):
+            if len(nombre) <= max_chars:
+                return nombre
+            palabras = nombre.split()
+            if len(palabras) > 1:
+                iniciales = [p[0] + '.' for p in palabras[:-1]]
+                resultado = ' '.join(iniciales + [palabras[-1]])
+                if len(resultado) <= max_chars:
+                    return resultado
+                return resultado[:max_chars-2] + '..'
+            return nombre[:max_chars-2] + '..'
+        
+        # Crear datos de la tabla
+        datos_ranking = []
+        
+        # Header
+        header_style = ParagraphStyle(
+            'HeaderSimple',
+            fontSize=11,
+            textColor=colors.white,
+            alignment=1,
+            fontName='Helvetica-Bold',
+            leading=14
+        )
+        datos_ranking.append([Paragraph(f"{emoji} {titulo}", header_style), ""])
+        
+        # Añadir filas
+        for i, (_, row) in enumerate(df_sorted.iterrows()):
+            equipo_nombre = row['Equipo']
+            equipo_nombre_normalizado = normalizar_nombre_equipo(equipo_nombre)
+            posicion = i + 1
+            es_nuestro = equipo_nombre == equipo_seleccionado
+            
+            # Calcular intentos por partido y porcentaje
+            intentos_total = row.get(columna_intentos, 0)
+            pj = row.get('PJ', 1)
+            intentos_pp = intentos_total / pj if pj > 0 else 0
+            porcentaje = row.get(columna_pct, 0)
+            
+            # Formato: "(34.0) 41.2%" (con paréntesis)
+            if porcentaje == 100.0:
+                valor_texto = f"<b>({intentos_pp:.1f}) 100%</b>"
+            else:
+                valor_texto = f"<b>({intentos_pp:.1f}) {porcentaje:.1f}%</b>"
+            
+            # Nombre con ranking
+            ranking_bold = f"<b>{posicion}º</b>"
+            nombre_acortado = acortar_nombre(equipo_nombre_normalizado, 22)
+            nombre_mostrar = f"{ranking_bold} {nombre_acortado}"
+            
+            # Estilos (MISMO QUE OTRAS TABLAS)
+            if es_nuestro:
+                color_texto = color_header
+                nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
+                                            alignment=0, fontName='Helvetica-Bold', leading=11)
+                valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
+                                        alignment=2, fontName='Helvetica', leading=11)
+            else:
+                nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
+                                            alignment=0, fontName='Helvetica', leading=12)
+                valor_style = ParagraphStyle('', fontSize=10.5, textColor=colors.black, 
+                                        alignment=2, fontName='Helvetica', leading=12)
+            
+            datos_ranking.append([
+                Paragraph(nombre_mostrar, nombre_style),
+                Paragraph(valor_texto, valor_style)
+            ])
+        
+        # Crear tabla MÁS ANCHA para que no haya saltos de línea (3.0 inch cada una)
+        tabla = Table(datos_ranking, colWidths=[1.8*inch, 1.2*inch], rowHeights=None, splitByRow=True)
+        
+        # Estilos EXACTAMENTE IGUALES a crear_ranking_premium
+        estilos = [
+            # Header con color
+            ('SPAN', (0, 0), (1, 0)),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, 0), 'MIDDLE'),
+            ('BACKGROUND', (0, 0), (-1, 0), color_header),
+            ('TOPPADDING', (0, 0), (-1, 0), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            
+            # Contenido
+            ('ALIGN', (0, 1), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
+            ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 1), (-1, -1), 8),
+            ('RIGHTPADDING', (0, 1), (-1, -1), 8),
+            ('TOPPADDING', (0, 1), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+            
+            # Bordes
+            ('BOX', (0, 0), (-1, -1), 1, color_header),
+            ('LINEBELOW', (0, 0), (-1, 0), 1, color_header),
+        ]
+        
+        # Alternar colores de fondo y resaltar equipo seleccionado (EXACTAMENTE IGUAL)
+        for i, (_, row) in enumerate(df_sorted.iterrows(), 1):
+            equipo_nombre = row['Equipo']
+            
+            if equipo_nombre == equipo_seleccionado:
+                estilos_equipo = [
+                    ('BACKGROUND', (0, i), (-1, i), colors.HexColor("#ffe6e6")),  # Fondo rojito claro
+                    ('LINEBELOW', (0, i), (-1, i), 0.5, color_header),
+                ]
+                estilos.extend(estilos_equipo)
+            else:
+                # Filas zebra: fila par -> gris claro, fila impar -> blanco
+                if i % 2 == 0:
+                    estilos.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor("#f8f9fa")))
+                estilos.append(('LINEBELOW', (0, i), (-1, i), 0.25, color_header))
+        
+        tabla.setStyle(TableStyle(estilos))
+        
+        # Contenedor MÁS ANCHO (3.0 inch para evitar saltos de línea)
+        contenedor_data = [[tabla]]
+        contenedor = Table(contenedor_data, colWidths=[3.0*inch])
+        contenedor.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ('TOPPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+            ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#ffffff')),
+        ]))
+        
+        return contenedor
+    
+    # Crear las TRES tablas
+    tablas_anchas = []
+    
+    # 1. TIROS LIBRES
+    if 'FT_Percentage_Equipo' in rankings_equipos:
+        df_tl = rankings_equipos['FT_Percentage_Equipo'].copy()
+        df_tl_sorted = df_tl.sort_values('FT%', ascending=False).reset_index(drop=True)
+        
+        ranking_tl_ancho = crear_ranking_ancho(
+            "TIROS LIBRES",
+            df_tl_sorted,
+            'FTA',  # Columna de intentos
+            'FT%',  # Columna de porcentaje
+            colors.HexColor('#4a5568'),
+            "🎯"
+        )
+        tablas_anchas.append(ranking_tl_ancho)
+    
+    # 2. TRIPLES
+    if 'Triples_Equipo' in rankings_equipos:
+        df_triples = rankings_equipos['Triples_Equipo'].copy()
+        df_triples_sorted = df_triples.sort_values('FG3%', ascending=False).reset_index(drop=True)
+        
+        ranking_triples_ancho = crear_ranking_ancho(
+            "TRIPLES",
+            df_triples_sorted,
+            'FG3A',  # Columna de intentos
+            'FG3%',  # Columna de porcentaje
+            colors.HexColor('#4a5568'),
+            "🏹"
+        )
+        tablas_anchas.append(ranking_triples_ancho)
+    
+    # 3. TIROS DE 2 (nuevos!)
+    if 'FG2_Percentage_Equipo' in rankings_equipos:
+        df_fg2 = rankings_equipos['FG2_Percentage_Equipo'].copy()
+        df_fg2_sorted = df_fg2.sort_values('FG2%', ascending=False).reset_index(drop=True)
+        
+        ranking_fg2_ancho = crear_ranking_ancho(
+            "TIROS DE 2",
+            df_fg2_sorted,
+            'FG2A',  # Columna de intentos
+            'FG2%',  # Columna de porcentaje
+            colors.HexColor('#4a5568'),
+            "🏀"
+        )
+        tablas_anchas.append(ranking_fg2_ancho)
+    
+    # Distribuir las 3 tablas centradas en UNA FILA (más anchas, separadas menos)
+    if len(tablas_anchas) >= 3:
+        separador = Table([[""],], colWidths=[0.3*inch])
+        separador.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.white)]))
+        
+        fila_tablas = Table([[tablas_anchas[0], separador, tablas_anchas[1], separador, tablas_anchas[2]]], 
+                           colWidths=[3.0*inch, 0.3*inch, 3.0*inch, 0.3*inch, 3.0*inch])
+        fila_tablas.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ]))
+        
+        story.append(fila_tablas)
+    elif len(tablas_anchas) == 2:
+        # Fallback: solo 2 tablas
+        separador = Table([[""],], colWidths=[0.5*inch])
+        separador.setStyle(TableStyle([('BACKGROUND', (0, 0), (-1, -1), colors.white)]))
+        
+        fila_tablas = Table([[tablas_anchas[0], separador, tablas_anchas[1]]], 
+                           colWidths=[3.0*inch, 0.5*inch, 3.0*inch])
+        fila_tablas.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ]))
+        
+        story.append(fila_tablas)
+        fila_tablas.hAlign = 'CENTER'
+        story.append(fila_tablas)
+    
+    story.append(Spacer(1, 0.2*inch))
 
 
 def crear_pagina_rankings(story, rankings, styles, equipo_url=None, df_resultados=None):
@@ -2765,6 +3093,256 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     for explicacion in explicaciones:
         story.append(Paragraph(explicacion, explicacion_style))
     
+    # ============== NUEVA SECCIÓN: ESTADÍSTICAS AVANZADAS (EQUIPO) ==============
+    story.append(NextPageTemplate('landscape'))  # Asegurar plantilla con watermark
+    story.append(PageBreak())
+    
+    # Sin título general - empezamos directamente con el primer subtítulo
+    story.append(Spacer(1, 0.3*inch))
+    
+    # Función para calcular métricas avanzadas de forma segura
+    def calc_safe(formula_fn, default="—"):
+        try:
+            result = formula_fn()
+            if result is None or (isinstance(result, float) and (np.isnan(result) or np.isinf(result))):
+                return default
+            return result
+        except (ZeroDivisionError, TypeError, KeyError, AttributeError, Exception):
+            return default
+    
+    # Obtener datos del equipo y oponentes para cálculos
+    try:
+        # Datos del equipo seleccionado (TOTALES de la temporada)
+        fgm = float(equipo_data.get('FGM', 0) or 0)
+        fga = float(equipo_data.get('FGA', 0) or 0)
+        fg3m = float(equipo_data.get('FG3M', 0) or 0)
+        fg3a = float(equipo_data.get('FG3A', 0) or 0)
+        ftm = float(equipo_data.get('FTM', 0) or 0)
+        fta = float(equipo_data.get('FTA', 0) or 0)
+        pts = float(equipo_data.get('PTS_Favor', 0) or 0)
+        orb = float(equipo_data.get('OREB_Total', 0) or 0)
+        drb = float(equipo_data.get('DREB_Total', 0) or 0)
+        ast = float(equipo_data.get('AST_Total', 0) or 0)
+        stl = float(equipo_data.get('STL', 0) or 0)
+        blk = float(equipo_data.get('BLK', 0) or 0)
+        # TOV puede estar como TO_Total o TO
+        tov = float(equipo_data.get('TO_Total', equipo_data.get('TO', 0)) or 0)
+        pf = float(equipo_data.get('PF', 0) or 0)
+        pj = float(equipo_data.get('PJ', 1) or 1)
+        ortg = float(equipo_data.get('ORtg', 0) or 0)
+        drtg = float(equipo_data.get('DRtg', 0) or 0)
+        
+        # Debug: Imprimir valores clave para verificar
+        print(f"\n📊 DEBUG - Valores para estadísticas avanzadas:")
+        print(f"   Equipo: {nombre_equipo}")
+        print(f"   Partidos jugados (PJ): {pj}")
+        print(f"   Puntos totales (PTS): {pts}")
+        print(f"   Tiros campo (FGM/FGA): {fgm}/{fga}")
+        print(f"   Triples (FG3M/FG3A): {fg3m}/{fg3a}")
+        print(f"   Tiros libres (FTM/FTA): {ftm}/{fta}")
+        print(f"   Pérdidas (TOV): {tov}")
+        print(f"   Asistencias (AST): {ast}")
+        print(f"   Rebotes (ORB/DRB): {orb}/{drb}")
+        
+        # Promedios de oponentes (sumar todos los oponentes y promediar)
+        opp_orb = float(df_grupo[df_grupo['Equipo'] != nombre_equipo]['OREB_Total'].sum() / max(len(df_grupo) - 1, 1))
+        opp_drb = float(df_grupo[df_grupo['Equipo'] != nombre_equipo]['DREB_Total'].sum() / max(len(df_grupo) - 1, 1))
+        
+    except Exception as e:
+        print(f"⚠️ Error obteniendo datos para estadísticas avanzadas: {e}")
+        import traceback
+        traceback.print_exc()
+        # Valores por defecto
+        fgm = fga = fg3m = fg3a = ftm = fta = pts = 0.0
+        orb = drb = ast = stl = blk = tov = pf = pj = 1.0
+        ortg = drtg = opp_orb = opp_drb = 0.0
+    
+    # Calcular las 12 métricas avanzadas PARA TODOS LOS EQUIPOS (para calcular rankings)
+    df_grupo_avanzadas = df_grupo.copy()
+    total_equipos = len(df_grupo)
+    
+    # Calcular cada métrica para todos los equipos
+    for idx, equipo_row in df_grupo_avanzadas.iterrows():
+        eq_fgm = float(equipo_row.get('FGM', 0) or 0)
+        eq_fga = float(equipo_row.get('FGA', 0) or 0)
+        eq_fg3m = float(equipo_row.get('FG3M', 0) or 0)
+        eq_fg3a = float(equipo_row.get('FG3A', 0) or 0)
+        eq_ftm = float(equipo_row.get('FTM', 0) or 0)
+        eq_fta = float(equipo_row.get('FTA', 0) or 0)
+        eq_pts = float(equipo_row.get('PTS_Favor', 0) or 0)
+        eq_orb = float(equipo_row.get('OREB_Total', 0) or 0)
+        eq_drb = float(equipo_row.get('DREB_Total', 0) or 0)
+        eq_ast = float(equipo_row.get('AST_Total', 0) or 0)
+        eq_tov = float(equipo_row.get('TO_Total', equipo_row.get('TO', 0)) or 0)
+        eq_ortg = float(equipo_row.get('ORtg', 0) or 0)
+        eq_drtg = float(equipo_row.get('DRtg', 0) or 0)
+        eq_pj = float(equipo_row.get('PJ', 1) or 1)
+        
+        # Calcular métricas
+        df_grupo_avanzadas.loc[idx, 'eFG%'] = ((eq_fgm + 0.5 * eq_fg3m) / eq_fga * 100) if eq_fga > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'TS%'] = (eq_pts / (2 * (eq_fga + 0.44 * eq_fta)) * 100) if (eq_fga + 0.44 * eq_fta) > 0 else 0
+        df_grupo_avanzadas.loc[idx, '3PAr'] = (eq_fg3a / eq_fga) if eq_fga > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'FTr'] = (eq_fta / eq_fga) if eq_fga > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'TOV%'] = (eq_tov / (eq_fga + 0.44 * eq_fta + eq_tov) * 100) if (eq_fga + 0.44 * eq_fta + eq_tov) > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'AST/TOV'] = (eq_ast / eq_tov) if eq_tov > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'ORB%'] = (eq_orb / (eq_orb + opp_drb) * 100) if (eq_orb + opp_drb) > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'DRB%'] = (eq_drb / (eq_drb + opp_orb) * 100) if (eq_drb + opp_orb) > 0 else 0
+        posesiones_eq = (eq_fga + 0.44 * eq_fta + eq_tov - eq_orb)
+        df_grupo_avanzadas.loc[idx, 'PPP'] = (eq_pts / posesiones_eq) if posesiones_eq > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'NetRtg'] = (eq_ortg - eq_drtg) if eq_ortg and eq_drtg else 0
+        # Nuevas métricas: AST% y FT Efficiency
+        df_grupo_avanzadas.loc[idx, 'AST%'] = (eq_ast / eq_fgm * 100) if eq_fgm > 0 else 0
+        df_grupo_avanzadas.loc[idx, 'FT_Eff'] = (eq_ftm / eq_fga) if eq_fga > 0 else 0
+    
+    # Calcular rankings (posición de nuestro equipo)
+    posiciones_avanzadas = {}
+    
+    # Para métricas donde MAYOR es MEJOR
+    metricas_mayor_mejor = ['eFG%', 'TS%', '3PAr', 'FTr', 'AST/TOV', 'ORB%', 'DRB%', 'PPP', 'NetRtg', 'AST%', 'FT_Eff']
+    for metrica in metricas_mayor_mejor:
+        if metrica in df_grupo_avanzadas.columns:
+            valor_nuestro = df_grupo_avanzadas[df_grupo_avanzadas['Equipo'] == nombre_equipo][metrica].values[0] if len(df_grupo_avanzadas[df_grupo_avanzadas['Equipo'] == nombre_equipo]) > 0 else 0
+            posiciones_avanzadas[metrica] = (df_grupo_avanzadas[metrica] > valor_nuestro).sum() + 1
+    
+    # Para TOV% MENOR es MEJOR
+    if 'TOV%' in df_grupo_avanzadas.columns:
+        valor_nuestro_tov = df_grupo_avanzadas[df_grupo_avanzadas['Equipo'] == nombre_equipo]['TOV%'].values[0] if len(df_grupo_avanzadas[df_grupo_avanzadas['Equipo'] == nombre_equipo]) > 0 else 0
+        posiciones_avanzadas['TOV%'] = (df_grupo_avanzadas['TOV%'] < valor_nuestro_tov).sum() + 1
+    
+    # Calcular las 12 métricas para nuestro equipo (valores ya calculados antes)
+    # 1. eFG% (Porcentaje de tiro efectivo)
+    efg = calc_safe(lambda: ((fgm + 0.5 * fg3m) / fga * 100) if fga > 0 else None)
+    efg_texto = f"{efg:.1f}%" if efg != "—" else "—"
+    
+    # 2. TS% (Porcentaje real de tiro)
+    ts = calc_safe(lambda: (pts / (2 * (fga + 0.44 * fta)) * 100) if (fga + 0.44 * fta) > 0 else None)
+    ts_texto = f"{ts:.1f}%" if ts != "—" else "—"
+    
+    # 3. 3PAr (Tres puntos intentados / tiros campo)
+    three_par = calc_safe(lambda: (fg3a / fga) if fga > 0 else None)
+    three_par_texto = f"{three_par:.2f}" if three_par != "—" else "—"
+    
+    # 4. FTr (Tiros libres por tiro de campo)
+    ftr = calc_safe(lambda: (fta / fga) if fga > 0 else None)
+    ftr_texto = f"{ftr:.2f}" if ftr != "—" else "—"
+    
+    # 5. TOV% (Porcentaje de posesiones perdidas)
+    tov_pct = calc_safe(lambda: (tov / (fga + 0.44 * fta + tov) * 100) if (fga + 0.44 * fta + tov) > 0 else None)
+    tov_pct_texto = f"{tov_pct:.1f}%" if tov_pct != "—" else "—"
+    
+    # 6. AST/TOV (Asistencias por pérdida) - CORREGIDO
+    ast_tov = calc_safe(lambda: (ast / tov) if tov > 0 else None)
+    ast_tov_texto = f"{ast_tov:.2f}" if ast_tov != "—" else "—"
+    
+    # 7. ORB% (Porcentaje de rebote ofensivo)
+    orb_pct = calc_safe(lambda: (orb / (orb + opp_drb) * 100) if (orb + opp_drb) > 0 else None)
+    orb_pct_texto = f"{orb_pct:.1f}%" if orb_pct != "—" else "—"
+    
+    # 8. DRB% (Porcentaje de rebote defensivo)
+    drb_pct = calc_safe(lambda: (drb / (drb + opp_orb) * 100) if (drb + opp_orb) > 0 else None)
+    drb_pct_texto = f"{drb_pct:.1f}%" if drb_pct != "—" else "—"
+    
+    # 9. PPP (Puntos por posesión)
+    posesiones = calc_safe(lambda: (fga + 0.44 * fta + tov - orb))
+    ppp = calc_safe(lambda: (pts / posesiones) if posesiones != "—" and posesiones > 0 else None)
+    ppp_texto = f"{ppp:.2f}" if ppp != "—" else "—"
+    
+    # 10. Net Rating
+    net_rating = calc_safe(lambda: (ortg - drtg) if ortg and drtg else None)
+    if net_rating != "—":
+        signo = "+" if net_rating > 0 else ""
+        net_rating_texto = f"{signo}{net_rating:.1f}"
+    else:
+        net_rating_texto = "—"
+    
+    # 11. AST% (Tasa de asistencias - colectividad ofensiva)
+    ast_pct = calc_safe(lambda: (ast / fgm * 100) if fgm > 0 else None)
+    ast_pct_texto = f"{ast_pct:.1f}%" if ast_pct != "—" else "—"
+    
+    # 12. FT Efficiency (Eficiencia de tiros libres)
+    ft_efficiency = calc_safe(lambda: (ftm / fga) if fga > 0 else None)
+    ft_efficiency_texto = f"{ft_efficiency:.2f}" if ft_efficiency != "—" else "—"
+    
+    # === FILA 1: EFICIENCIA OFENSIVA ===
+    story.append(Paragraph("EFICIENCIA OFENSIVA (AVANZADA)", titulo_ofensivo_style))
+    story.append(Spacer(1, 0.15*inch))
+    fila1_avanzadas = [
+        crear_caja_estadistica(efg_texto, "eFG%<br/>Tiro efectivo", posiciones_avanzadas.get('eFG%'), total_equipos),
+        crear_caja_estadistica(ts_texto, "TS%<br/>Eficiencia total", posiciones_avanzadas.get('TS%'), total_equipos),
+        crear_caja_estadistica(three_par_texto, "3PAr<br/>% volumen de 3", posiciones_avanzadas.get('3PAr'), total_equipos),
+        crear_caja_estadistica(ftr_texto, "FTr<br/>Agresividad", posiciones_avanzadas.get('FTr'), total_equipos)
+    ]
+    
+    tabla_fila1_avanzadas = Table([fila1_avanzadas], colWidths=[2.2*inch]*4)
+    tabla_fila1_avanzadas.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0.05*inch),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0.05*inch),
+    ]))
+    tabla_fila1_avanzadas.hAlign = 'CENTER'
+    story.append(tabla_fila1_avanzadas)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # === FILA 2: CONTROL Y REBOTE ===
+    story.append(Paragraph("CONTROL Y REBOTE (AVANZADO)", titulo_ofensivo_style))
+    story.append(Spacer(1, 0.15*inch))
+    fila2_avanzadas = [
+        crear_caja_estadistica(tov_pct_texto, "TOV%<br/>Pérdidas/posesión", posiciones_avanzadas.get('TOV%'), total_equipos),
+        crear_caja_estadistica(ast_tov_texto, "AST/TOV<br/>Fluidez ofensiva", posiciones_avanzadas.get('AST/TOV'), total_equipos),
+        crear_caja_estadistica(orb_pct_texto, "ORB%<br/>2ª oportunidades", posiciones_avanzadas.get('ORB%'), total_equipos),
+        crear_caja_estadistica(drb_pct_texto, "DRB%<br/>Cerrar el aro", posiciones_avanzadas.get('DRB%'), total_equipos)
+    ]
+    
+    tabla_fila2_avanzadas = Table([fila2_avanzadas], colWidths=[2.2*inch]*4)
+    tabla_fila2_avanzadas.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0.05*inch),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0.05*inch),
+    ]))
+    tabla_fila2_avanzadas.hAlign = 'CENTER'
+    story.append(tabla_fila2_avanzadas)
+    story.append(Spacer(1, 0.2*inch))
+    
+    # === FILA 3: EFECTIVIDAD GLOBAL ===
+    story.append(Paragraph("EFECTIVIDAD GLOBAL (AVANZADA)", titulo_ofensivo_style))
+    story.append(Spacer(1, 0.15*inch))
+    fila3_avanzadas = [
+        crear_caja_estadistica(ppp_texto, "PPP<br/>Eficiencia real", posiciones_avanzadas.get('PPP'), total_equipos),
+        crear_caja_estadistica(net_rating_texto, "NET RATING<br/>Balance atq/def", posiciones_avanzadas.get('NetRtg'), total_equipos),
+        crear_caja_estadistica(ast_pct_texto, "AST%", posiciones_avanzadas.get('AST%'), total_equipos),
+        crear_caja_estadistica(ft_efficiency_texto, "FT EFFICIENCY", posiciones_avanzadas.get('FT_Eff'), total_equipos)
+    ]
+    
+    tabla_fila3_avanzadas = Table([fila3_avanzadas], colWidths=[2.2*inch]*4)
+    tabla_fila3_avanzadas.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 0.05*inch),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 0.05*inch),
+    ]))
+    tabla_fila3_avanzadas.hAlign = 'CENTER'
+    story.append(tabla_fila3_avanzadas)
+    
+    # Nota explicativa al final
+    story.append(Spacer(1, 0.2*inch))
+    nota_avanzadas = Paragraph(
+        "* Métricas calculadas a partir de datos de boxscore de la temporada actual. "
+        "eFG% y TS% miden eficiencia de tiro considerando el valor de los triples. "
+        "3PAr (tasa de triples) indica dependencia del triple. "
+        "FTr (tasa TL) refleja agresividad en penetración. "
+        "TOV% mide pérdidas por posesión (menor es mejor). "
+        "AST/TOV evalúa fluidez ofensiva. "
+        "ORB% y DRB% miden control del rebote. "
+        "PPP (puntos por posesión) evalúa eficiencia real. "
+        "Net Rating compara ataque vs defensa. "
+        "AST% mide colectividad ofensiva. "
+        "FT Efficiency refleja puntos generados por contacto.",
+        explicacion_style
+    )
+    story.append(nota_avanzadas)
+    
     # ============== REORDENAR PÁGINAS SEGÚN NUEVA ESTRUCTURA ==============
     
     # El orden correcto es:
@@ -2834,8 +3412,10 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
     # ============== PÁGINA: RANKINGS DE EQUIPOS - MOVIDO DESPUÉS DE RANKINGS INDIVIDUALES ==============
     if rankings_equipos and df_grupo is not None:
         crear_pagina_rankings_equipos(story, rankings_equipos, df_grupo, nombre_equipo, styles)
-        # Añadir segunda página de rankings con estadísticas adicionales
+        # Añadir segunda página de rankings con estadísticas adicionales (eFG% y FTr)
         crear_pagina_rankings_equipos_continuacion(story, rankings_equipos, df_grupo, nombre_equipo, styles)
+        # Añadir tercera página con tablas anchas de TIROS LIBRES y TRIPLES
+        crear_pagina_rankings_tiros(story, rankings_equipos, df_grupo, nombre_equipo, styles)
     
     return story
 
