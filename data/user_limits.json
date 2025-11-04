@@ -8,7 +8,7 @@
       "authorized": true,
       "admin": true,
       "max_generations": 50,
-      "remaining_generations": 2,
+      "remaining_generations": 1,
       "name": "Iván"
     },
     "1939509844": {
@@ -43,7 +43,7 @@
       "authorized": true,
       "admin": false,
       "max_generations": 3,
-      "remaining_generations": 3,
+      "remaining_generations": 2,
       "name": "PABLO"
     }
   }

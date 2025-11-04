@@ -11,7 +11,8 @@ from datetime import datetime
 from requests.exceptions import ReadTimeout, ConnectionError
 
 # === CONFIGURACIÓN GLOBAL ===
-LIGAS_A_SCRAPEAR = [2, 3]  # Lista de ligas: 2 = Segunda FEB, 3 = Tercera FEB
+LIGAS_A_SCRAPEAR = [2, 3, 4, 67, 9]  # Lista de ligas: 2 = Segunda FEB, 3 = Tercera FEB, 4 = Liga Femenina,
+#67 = Liga Challenge, 9 = Liga Femenina 2
 BASE_URL_TEMPLATE = "https://baloncestoenvivo.feb.es/calendario/tercerafeb/{}/2025"
 BASE = "https://baloncestoenvivo.feb.es"
 

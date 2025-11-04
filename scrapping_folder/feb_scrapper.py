@@ -205,9 +205,11 @@ class FEBScrapper:
         jugadores_data: List[List[Optional[str]]] = []
         rows = soup.find_all("tr")[2:]  # omitir cabecera
         
-        # Para Segunda FEB 2025: necesitamos procesar jugadores con GR+LR especialmente
-        if self.season == "2025" and categoria == "2ª FEB":
-            return self._procesar_segunda_feb_2025(rows) #Aqui habrá que haceerlo con los femeninos tambien
+        # Para Segunda FEB 2025 y categorías femeninas: necesitamos procesar jugadores con GR+LR especialmente
+        # Filtrar solo registros de Liga Regular (LR)
+        categorias_con_filtro_lr = ["2ª FEB", "LF ENDESA", "LF Challenge", "LF2"]
+        if self.season == "2025" and categoria in categorias_con_filtro_lr:
+            return self._procesar_segunda_feb_2025(rows, categoria)
         
         # Procesamiento normal para otras categorías/años
         for row in rows:
@@ -293,85 +295,28 @@ class FEBScrapper:
             df = df.iloc[:-1]
         return df
 
-    def _procesar_segunda_feb_2025(self, rows) -> pd.DataFrame:
-        """Procesamiento especial para Segunda FEB 2025: tomar nombres de GR pero stats de LR."""
+    def _procesar_segunda_feb_2025(self, rows, categoria: Optional[str] = None) -> pd.DataFrame:
+        """Procesamiento especial para categorías con múltiples fases (GR, LR, PO, FA, etc.):
+        Filtra ÚNICAMENTE los registros de fase LR (Liga Regular), ignorando todas las demás fases.
+        Aplicable a: 2ª FEB, LF ENDESA, LF Challenge, LF2."""
         jugadores_data: List[List[Optional[str]]] = []
-        i = 0
+        nombre_jugador_actual = None
+        enlace_jugador_actual = None
         
-        while i < len(rows):
-            row = rows[i]
+        for row in rows:
             cols = row.find_all("td")
             
             if len(cols) > 0:
-                nombre_jugador = cols[0].get_text(strip=True)
+                nombre_en_fila = cols[0].get_text(strip=True)
                 fase = cols[1].get_text(strip=True)
                 
-                # Si encontramos una fila con nombre y fase GR
-                if nombre_jugador and fase == "GR":
-                    enlace_jugador = cols[0].find("a")["href"] if cols[0].find("a") else None
-                    
-                    # Buscar la fila LR correspondiente (siguiente fila sin nombre)
-                    if i + 1 < len(rows):
-                        next_row = rows[i + 1]
-                        next_cols = next_row.find_all("td")
-                        
-                        if (len(next_cols) > 0 and 
-                            not next_cols[0].get_text(strip=True) and  # Sin nombre
-                            next_cols[1].get_text(strip=True) == "LR"):  # Fase LR
-                            
-                            # Usar datos de la fila LR (next_row) pero con el nombre de GR
-                            partidos = next_cols[2].get_text(strip=True)
-                            minutos = next_cols[3].get_text(strip=True)
-                            puntos = next_cols[4].get_text(strip=True)
-                            tiros_dos = next_cols[5].get_text(strip=False).split()[0]
-                            tiros_tres = next_cols[6].get_text(strip=False).split()[0]
-                            tiros_campo = next_cols[7].get_text(strip=False).split()[0]
-                            tiros_libres = next_cols[8].get_text(strip=False).split()[0]
-                            rebotes_ofensivos = next_cols[9].get_text(strip=True)
-                            rebotes_defensivos = next_cols[10].get_text(strip=True)
-                            rebotes_totales = next_cols[11].get_text(strip=True)
-                            asistencias = next_cols[12].get_text(strip=True)
-                            recuperaciones = next_cols[13].get_text(strip=True)
-                            perdidas = next_cols[14].get_text(strip=True)
-                            tapones_favor = next_cols[15].get_text(strip=True)
-                            tapones_contra = next_cols[16].get_text(strip=True)
-                            mates = next_cols[17].get_text(strip=True)
-                            faltas_cometidas = next_cols[18].get_text(strip=True)
-                            faltas_recibidas = next_cols[19].get_text(strip=True)
-                            valoracion = next_cols[20].get_text(strip=True)
-                            
-                            jugadores_data.append([
-                                nombre_jugador,  # Nombre de la fila GR
-                                enlace_jugador,  # Enlace de la fila GR
-                                "LR",            # Fase LR (lo que queremos)
-                                partidos,       # Stats de la fila LR
-                                minutos,
-                                puntos,
-                                tiros_dos,
-                                tiros_tres,
-                                tiros_campo,
-                                tiros_libres,
-                                rebotes_ofensivos,
-                                rebotes_defensivos,
-                                rebotes_totales,
-                                asistencias,
-                                recuperaciones,
-                                perdidas,
-                                tapones_favor,
-                                tapones_contra,
-                                mates,
-                                faltas_cometidas,
-                                faltas_recibidas,
-                                valoracion,
-                            ])
-                            
-                            # Saltar la fila LR ya que la hemos procesado
-                            i += 2
-                            continue
+                # Si hay nombre en la fila, actualizar el nombre y enlace actuales
+                if nombre_en_fila:
+                    nombre_jugador_actual = nombre_en_fila
+                    enlace_jugador_actual = cols[0].find("a")["href"] if cols[0].find("a") else None
                 
-                # Para jugadores que solo tienen LR (sin GR previa)
-                elif nombre_jugador and fase == "LR":
-                    enlace_jugador = cols[0].find("a")["href"] if cols[0].find("a") else None
+                # Solo procesar filas con fase LR
+                if fase == "LR" and nombre_jugador_actual:
                     partidos = cols[2].get_text(strip=True)
                     minutos = cols[3].get_text(strip=True)
                     puntos = cols[4].get_text(strip=True)
@@ -393,9 +338,9 @@ class FEBScrapper:
                     valoracion = cols[20].get_text(strip=True)
                     
                     jugadores_data.append([
-                        nombre_jugador,
-                        enlace_jugador,
-                        fase,
+                        nombre_jugador_actual,
+                        enlace_jugador_actual,
+                        "LR",
                         partidos,
                         minutos,
                         puntos,
@@ -416,8 +361,6 @@ class FEBScrapper:
                         faltas_recibidas,
                         valoracion,
                     ])
-            
-            i += 1
         
         df = pd.DataFrame(
             jugadores_data,
@@ -795,7 +738,7 @@ def _demo():
 
     # Completa: 1ª FEB, 2ª FEB y EBA (Liga Regular)
     print("\nCreando base de datos completa FEB...")
-    scraper.crear_base_datos_completa_feb(nombre_archivo="femenino.json")
+    scraper.crear_base_datos_completa_feb(nombre_archivo="datos2.json")
 
 
 if __name__ == "__main__":
