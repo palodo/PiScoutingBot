@@ -39,6 +39,7 @@ COMPETICIONES_HABILITADAS = {
     "1ª FEB": False,    # True = Habilitada, False = Bloqueada
     "2ª FEB": True,     # True = Habilitada, False = Bloqueada  ← DESBLOQUEADA
     "3ª FEB": True,     # True = Habilitada, False = Bloqueada
+    
 }
 
 # Mensajes personalizados para competiciones bloqueadas
