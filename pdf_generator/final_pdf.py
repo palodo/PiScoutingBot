@@ -1697,10 +1697,10 @@ def crear_pagina_rankings_tiros(story, rankings_equipos, df_equipos, equipo_sele
                 Paragraph(nombre_mostrar, nombre_style),
                 Paragraph(valor_texto, valor_style)
             ])
-        
+
         # Crear tabla MÁS ANCHA para que no haya saltos de línea (3.0 inch cada una)
         tabla = Table(datos_ranking, colWidths=[1.8*inch, 1.2*inch], rowHeights=None, splitByRow=True)
-        
+
         # Estilos EXACTAMENTE IGUALES a crear_ranking_premium
         estilos = [
             # Header con color
@@ -1710,7 +1710,7 @@ def crear_pagina_rankings_tiros(story, rankings_equipos, df_equipos, equipo_sele
             ('BACKGROUND', (0, 0), (-1, 0), color_header),
             ('TOPPADDING', (0, 0), (-1, 0), 8),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-            
+
             # Contenido
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),
             ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
@@ -1724,11 +1724,11 @@ def crear_pagina_rankings_tiros(story, rankings_equipos, df_equipos, equipo_sele
             ('BOX', (0, 0), (-1, -1), 1, color_header),
             ('LINEBELOW', (0, 0), (-1, 0), 1, color_header),
         ]
-        
+
         # Alternar colores de fondo y resaltar equipo seleccionado (EXACTAMENTE IGUAL)
         for i, (_, row) in enumerate(df_sorted.iterrows(), 1):
             equipo_nombre = row['Equipo']
-            
+
             if equipo_nombre == equipo_seleccionado:
                 estilos_equipo = [
                     ('BACKGROUND', (0, i), (-1, i), colors.HexColor("#ffe6e6")),  # Fondo rojito claro
@@ -1740,7 +1740,7 @@ def crear_pagina_rankings_tiros(story, rankings_equipos, df_equipos, equipo_sele
                 if i % 2 == 0:
                     estilos.append(('BACKGROUND', (0, i), (-1, i), colors.HexColor("#f8f9fa")))
                 estilos.append(('LINEBELOW', (0, i), (-1, i), 0.25, color_header))
-        
+
         tabla.setStyle(TableStyle(estilos))
         
         # Contenedor MÁS ANCHO (3.0 inch para evitar saltos de línea)
