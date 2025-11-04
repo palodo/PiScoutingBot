@@ -34,34 +34,49 @@ from pdf_generator.final_pdf import generar_pdf_final
 # CONFIGURACIÓN DE COMPETICIONES HABILITADAS
 # ==========================
 
-# Variables para controlar qué competiciones están disponibles
-COMPETICIONES_HABILITADAS = {
+# Configuración para MASCULINO
+COMPETICIONES_HABILITADAS_MASCULINO = {
     "1ª FEB": False,    # True = Habilitada, False = Bloqueada
     "2ª FEB": True,     # True = Habilitada, False = Bloqueada  ← DESBLOQUEADA
     "3ª FEB": True,     # True = Habilitada, False = Bloqueada
-    
 }
 
-# Mensajes personalizados para competiciones bloqueadas
-MENSAJES_BLOQUEO = {
+# Configuración para FEMENINO
+COMPETICIONES_HABILITADAS_FEMENINO = {
+    "Liga Challenge": True,
+    "LF Endesa": True,
+    "LF2": True,
+}
+
+# Mensajes personalizados para competiciones bloqueadas (MASCULINO)
+MENSAJES_BLOQUEO_MASCULINO = {
     "1ª FEB": "🔒 Primera FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
     "2ª FEB": "🔒 Segunda FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
     "3ª FEB": "🔒 Tercera FEB no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+}
+
+# Mensajes personalizados para competiciones bloqueadas (FEMENINO)
+MENSAJES_BLOQUEO_FEMENINO = {
+    "Liga Challenge": "🔒 Liga Challenge no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+    "LF Endesa": "🔒 Liga Femenina Endesa no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
+    "LF2": "🔒 LF2 no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀",
 }
 
 # ==========================
 # CONFIGURACIÓN
 # ==========================
 BASE_DIR = Path(__file__).parent.resolve()
-DATA_PATH = BASE_DIR / "data" / "datos_historicos.json"  # Archivo multi-temporada
+DATA_PATH = BASE_DIR / "data" / "datos_historicos.json"  # Archivo masculino multi-temporada
+DATA_PATH_FEMENINO = BASE_DIR / "femenino.json"  # Archivo femenino
 USER_LIMITS_PATH = BASE_DIR / "data" / "user_limits.json"  # Archivo para guardar contadores
 TEMPORADA_ACTUAL = "2025"  # Temporada a usar
 
 # Lee el token desde variable de entorno (recomendado)
 # Desarollo bot IVAN = 
+TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 #TELEGRAM_TOKEN = "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
 # no se cual ew: "8243023199:AAGw63fNujQ9S6rvqd1P6sEiZfZ2530iyfM"
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+#TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 # BOT REAL HOSTEADO 25-26 = "8275548769:AAEM7BiUHVpfeQb9B6zh6QS5piHtg_dR53I"
 #387041904:AAFhVMH9jeplmN289-4hRDOec5T65xmQQPI
 #
@@ -362,7 +377,7 @@ async def check_user_authorization(update: Update, context: ContextTypes.DEFAULT
     return True
 
 # Estados de la conversación
-ELEGIR_COMPETICION, ELEGIR_GRUPO, ELEGIR_EQUIPO, CONFIRMAR_EQUIPO, SOLICITAR_ACCESO_EQUIPO = range(5)
+ELEGIR_GENERO, ELEGIR_COMPETICION, ELEGIR_GRUPO, ELEGIR_EQUIPO, CONFIRMAR_EQUIPO, SOLICITAR_ACCESO_EQUIPO = range(6)
 
 # ==========================
 # CARGA Y EXTRACCIÓN DEL JSON
@@ -398,12 +413,14 @@ def _as_team_name(item: Any) -> str:
     return str(item).strip()
 
 
-def extract_structures(data: dict) -> Tuple[List[str], Dict[str, List[str]], Dict[Tuple[str, str], List[str]]]:
+def extract_structures(data: dict, filtro_categorias: List[str] = None) -> Tuple[List[str], Dict[str, List[str]], Dict[Tuple[str, str], List[str]]]:
     """
     Devuelve:
       - COMPETICIONES: lista de categorías
       - GRUPOS: {categoria -> [grupos]}
       - EQUIPOS: {(categoria, grupo) -> [equipos]}
+    
+    Si filtro_categorias se especifica, solo extrae esas categorías.
     """
     categorias = data.get("categorias", {})
     if not isinstance(categorias, dict):
@@ -414,6 +431,10 @@ def extract_structures(data: dict) -> Tuple[List[str], Dict[str, List[str]], Dic
     equipos_por_cat_grp: Dict[Tuple[str, str], List[str]] = {}
 
     for cat_name, cat_obj in categorias.items():
+        # Filtrar por categorías si se especifica
+        if filtro_categorias is not None and cat_name not in filtro_categorias:
+            continue
+            
         competiciones.append(cat_name)
         grupos_obj = (cat_obj or {}).get("grupos", {})
         if not isinstance(grupos_obj, dict):
@@ -433,9 +454,17 @@ def extract_structures(data: dict) -> Tuple[List[str], Dict[str, List[str]], Dic
     return competiciones, grupos_por_categoria, equipos_por_cat_grp
 
 
-# Cargamos estructuras en memoria al iniciar
-DATA = load_data_json()
-COMPETICIONES, GRUPOS, EQUIPOS = extract_structures(DATA)
+# Definir qué categorías pertenecen a cada género
+CATEGORIAS_MASCULINO = ["1ª FEB", "2ª FEB", "3ª FEB"]
+CATEGORIAS_FEMENINO = ["LF Challenge", "LF ENDESA", "LF2"]
+
+# Cargamos estructuras en memoria al iniciar - MASCULINO
+DATA_MASCULINO = load_data_json(DATA_PATH, TEMPORADA_ACTUAL)
+COMPETICIONES_MASCULINO, GRUPOS_MASCULINO, EQUIPOS_MASCULINO = extract_structures(DATA_MASCULINO, CATEGORIAS_MASCULINO)
+
+# Cargamos estructuras en memoria al iniciar - FEMENINO
+DATA_FEMENINO = load_data_json(DATA_PATH_FEMENINO, TEMPORADA_ACTUAL)
+COMPETICIONES_FEMENINO, GRUPOS_FEMENINO, EQUIPOS_FEMENINO = extract_structures(DATA_FEMENINO, CATEGORIAS_FEMENINO)
 
 # Crear directorio data si no existe
 BASE_DIR.joinpath("data").mkdir(exist_ok=True)
@@ -465,27 +494,85 @@ async def on_selection(competicion: str, grupo: str, equipo: str, update: Update
 # HANDLERS
 # ==========================
 
-async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Muestra el menú de categorías, tanto si viene de /start como de un callback (restart)."""
+async def menu_genero(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el menú de selección de género (Masculino/Femenino)."""
     user_id = update.effective_user.id
     remaining = get_user_remaining_generations(user_id)
     user_data = get_user_data(user_id)
     max_generations = user_data.get("max_generations", get_default_max_generations())
     user_name = user_data.get("name", update.effective_user.first_name or f"Usuario {user_id}")
     
+    # Botones de selección de género
+    teclado = [
+        [
+            InlineKeyboardButton("👨 MASCULINO", callback_data="genero::masculino"),
+            InlineKeyboardButton("👩 FEMENINO", callback_data="genero::femenino")
+        ]
+    ]
+    
+    text = (f"🏀 **¡Hola {user_name}!**\n\n"
+            f"📋 *Selecciona el tipo de competición:*\n\n"
+            f"👨 **Masculino**: 1ª FEB, 2ª FEB, 3ª FEB\n"
+            f"👩 **Femenino**: Liga Challenge, LF Endesa, LF2\n\n"
+            f"📊 **Generaciones disponibles:** {remaining} de {max_generations}\n\n"
+            f"💡 Usa `/help` para ver todos los comandos disponibles\n"
+            f"⚡ Si no responde, escribe /start para arrancar el bot")
+    
+    if update.message:
+        await update.message.reply_text(text, reply_markup=InlineKeyboardMarkup(teclado), parse_mode='Markdown')
+    else:
+        # CallbackQuery; reutilizamos el mismo mensaje
+        await update.callback_query.edit_message_text(text, reply_markup=InlineKeyboardMarkup(teclado), parse_mode='Markdown')
+    return ELEGIR_GENERO
+
+
+async def elegir_genero(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Procesa la selección de género y muestra las competiciones correspondientes."""
+    query = update.callback_query
+    await query.answer()
+
+    _, genero = query.data.split("::", maxsplit=1)
+    context.user_data["genero"] = genero  # Guardar selección de género
+    
+    # Ahora mostrar el menú de categorías con el género seleccionado
+    return await menu_categorias(update, context)
+
+
+async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra el menú de categorías según el género seleccionado."""
+    user_id = update.effective_user.id
+    remaining = get_user_remaining_generations(user_id)
+    user_data = get_user_data(user_id)
+    max_generations = user_data.get("max_generations", get_default_max_generations())
+    user_name = user_data.get("name", update.effective_user.first_name or f"Usuario {user_id}")
+    
+    # Obtener el género seleccionado del contexto
+    genero = context.user_data.get("genero", "masculino")
+    
+    # Determinar qué configuración usar
+    if genero == "masculino":
+        competiciones = COMPETICIONES_MASCULINO
+        competiciones_habilitadas = COMPETICIONES_HABILITADAS_MASCULINO
+        emoji_genero = "👨"
+    else:  # femenino
+        competiciones = COMPETICIONES_FEMENINO
+        competiciones_habilitadas = COMPETICIONES_HABILITADAS_FEMENINO
+        emoji_genero = "👩"
+    
     # Crear botones dinámicamente según configuración
     teclado = []
-    for i, comp in enumerate(COMPETICIONES):
+    for i, comp in enumerate(competiciones):
         # Verificar si la competición está habilitada
-        if COMPETICIONES_HABILITADAS.get(comp, True):  # Por defecto habilitada si no está en el dict
+        if competiciones_habilitadas.get(comp, True):  # Por defecto habilitada si no está en el dict
             # Competición habilitada - botón normal
             teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
         else:
             # Competición bloqueada - botón con icono de bloqueo
             teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data=f"locked::{comp}")])
 
+    teclado.append([InlineKeyboardButton("⬅️ Cambiar género", callback_data="back_genero")])
     
-    text = (f"🏀 **¡Hola {user_name}!**\n\n"
+    text = (f"{emoji_genero} **Competiciones {genero.title()}**\n\n"
             f"📋 *Selecciona la competición que quieres analizar:*\n\n"
             f"📊 **Generaciones disponibles:** {remaining} de {max_generations}\n\n"
             f"💡 Usa `/help` para ver todos los comandos disponibles\n"
@@ -500,9 +587,8 @@ async def menu_categorias(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT_TYPE):
-    """Envía el menú de categorías sin responder a un mensaje específico."""
-    # Necesitamos obtener el user_id desde el contexto o pasarlo como parámetro
-    # Por ahora asumimos que está en el contexto de la conversación
+    """Envía el menú de géneros sin responder a un mensaje específico."""
+    # Redirigir al menú de género en lugar de categorías directamente
     user_id = context._user_id if hasattr(context, '_user_id') else None
     remaining = get_user_remaining_generations(user_id) if user_id else get_default_max_generations()
     
@@ -514,20 +600,18 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
         max_generations = get_default_max_generations()
         user_name = "Usuario"
     
-    # Crear botones dinámicamente según configuración
-    teclado = []
-    for i, comp in enumerate(COMPETICIONES):
-        # Verificar si la competición está habilitada
-        if COMPETICIONES_HABILITADAS.get(comp, True):  # Por defecto habilitada si no está en el dict
-            # Competición habilitada - botón normal
-            teclado.append([InlineKeyboardButton(text=f"🏆 {comp}", callback_data=f"comp::{i}")])
-        else:
-            # Competición bloqueada - botón con icono de bloqueo
-            teclado.append([InlineKeyboardButton(text=f"🔒 {comp} [BLOQUEADO]", callback_data=f"locked::{comp}")])
-
+    # Botones de selección de género
+    teclado = [
+        [
+            InlineKeyboardButton("👨 MASCULINO", callback_data="genero::masculino"),
+            InlineKeyboardButton("👩 FEMENINO", callback_data="genero::femenino")
+        ]
+    ]
     
     text = (f"🏀 **¡Hola {user_name}!**\n\n"
-            f"📋 *Selecciona la competición que quieres analizar:*\n\n"
+            f"📋 *Selecciona el tipo de competición:*\n\n"
+            f"👨 **Masculino**: 1ª FEB, 2ª FEB, 3ª FEB\n"
+            f"👩 **Femenino**: Liga Challenge, LF Endesa, LF2\n\n"
             f"📊 **Generaciones disponibles:** {remaining} de {max_generations}\n\n"
             f"💡 Usa `/help` para ver todos los comandos disponibles\n"
             f"⚡ Si no responde, escribe /start para arrancar el bot")
@@ -538,7 +622,7 @@ async def menu_categorias_silencioso(chat_id: int, context: ContextTypes.DEFAULT
         reply_markup=InlineKeyboardMarkup(teclado),
         parse_mode='Markdown'
     )
-    return ELEGIR_COMPETICION
+    return ELEGIR_GENERO
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -556,9 +640,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Cambiar al estado de solicitud de acceso
         return SOLICITAR_ACCESO_EQUIPO
     
-    # Usuario autorizado - Limpiar contexto y mostrar menú de categorías
+    # Usuario autorizado - Limpiar contexto y mostrar menú de género
     context.user_data.clear()
-    return await menu_categorias(update, context)
+    return await menu_genero(update, context)
 
 
 async def restart(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -587,14 +671,25 @@ async def elegir_competicion(update: Update, context: ContextTypes.DEFAULT_TYPE)
     _, idx_str = query.data.split("::", maxsplit=1)
     cidx = int(idx_str)
 
-    if cidx < 0 or cidx >= len(COMPETICIONES):
+    # Obtener género del contexto
+    genero = context.user_data.get("genero", "masculino")
+    
+    # Usar estructuras según género
+    if genero == "masculino":
+        competiciones = COMPETICIONES_MASCULINO
+        grupos_dict = GRUPOS_MASCULINO
+    else:
+        competiciones = COMPETICIONES_FEMENINO
+        grupos_dict = GRUPOS_FEMENINO
+
+    if cidx < 0 or cidx >= len(competiciones):
         await query.edit_message_text("Competición inválida. Usa /start para empezar de nuevo.")
         return ConversationHandler.END
 
-    competicion = COMPETICIONES[cidx]
+    competicion = competiciones[cidx]
     context.user_data["competicion"] = competicion
 
-    grupos = GRUPOS.get(competicion, [])
+    grupos = grupos_dict.get(competicion, [])
     teclado = [[InlineKeyboardButton(text=f"👥 {g}", callback_data=f"grupo::{i}")]
                for i, g in enumerate(grupos)]
     teclado.append([InlineKeyboardButton("⬅️ Volver", callback_data="back_comp"),
@@ -615,8 +710,19 @@ async def elegir_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     _, idx_str = query.data.split("::", maxsplit=1)
     gidx = int(idx_str)
 
+    # Obtener género del contexto
+    genero = context.user_data.get("genero", "masculino")
+    
+    # Usar estructuras según género
+    if genero == "masculino":
+        grupos_dict = GRUPOS_MASCULINO
+        equipos_dict = EQUIPOS_MASCULINO
+    else:
+        grupos_dict = GRUPOS_FEMENINO
+        equipos_dict = EQUIPOS_FEMENINO
+
     competicion = context.user_data.get("competicion")
-    grupos = GRUPOS.get(competicion, [])
+    grupos = grupos_dict.get(competicion, [])
     if gidx < 0 or gidx >= len(grupos):
         await query.edit_message_text("Grupo inválido. Usa /start para empezar de nuevo.")
         return ConversationHandler.END
@@ -624,7 +730,7 @@ async def elegir_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     grupo = grupos[gidx]
     context.user_data["grupo"] = grupo
 
-    equipos = EQUIPOS.get((competicion, grupo), [])
+    equipos = equipos_dict.get((competicion, grupo), [])
     context.user_data["equipos_list"] = equipos  # para mapear índice -> nombre
 
     teclado = [[InlineKeyboardButton(text=f"🏀 {e}", callback_data=f"equipo::{i}")]
@@ -686,8 +792,15 @@ async def locked_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Formato: "locked::Nombre Competición"
     _, competicion = query.data.split("::", maxsplit=1)
     
+    # Determinar qué mensajes usar según el género
+    genero = context.user_data.get("genero", "masculino")
+    if genero == "masculino":
+        mensajes_bloqueo = MENSAJES_BLOQUEO_MASCULINO
+    else:
+        mensajes_bloqueo = MENSAJES_BLOQUEO_FEMENINO
+    
     # Obtener mensaje personalizado o usar uno por defecto
-    mensaje = MENSAJES_BLOQUEO.get(competicion, f"🔒 {competicion} no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀")
+    mensaje = mensajes_bloqueo.get(competicion, f"🔒 {competicion} no está disponible aún.\n\nEsta competición estará habilitada próximamente. 🏀")
     
     await query.answer(mensaje, show_alert=True)
     # No cambiar el estado, mantener en el mismo menú
@@ -1489,6 +1602,13 @@ async def mensaje_no_permitido(update: Update, context: ContextTypes.DEFAULT_TYP
     return None
 
 
+async def back_genero(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Vuelve al menú de selección de género"""
+    query = update.callback_query
+    await query.answer()
+    return await menu_genero(update, context)
+
+
 async def back_competicion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -1498,8 +1618,18 @@ async def back_competicion(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def back_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
+    # Obtener género del contexto
+    genero = context.user_data.get("genero", "masculino")
+    
+    # Usar estructuras según género
+    if genero == "masculino":
+        grupos_dict = GRUPOS_MASCULINO
+    else:
+        grupos_dict = GRUPOS_FEMENINO
+    
     competicion = context.user_data.get("competicion")
-    grupos = GRUPOS.get(competicion, [])
+    grupos = grupos_dict.get(competicion, [])
     teclado = [[InlineKeyboardButton(text=g, callback_data=f"grupo::{i}")]
                for i, g in enumerate(grupos)]
     teclado.append([InlineKeyboardButton("⬅️ Volver", callback_data="back_comp"),
@@ -1514,9 +1644,19 @@ async def back_grupo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def back_equipos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
+    
+    # Obtener género del contexto
+    genero = context.user_data.get("genero", "masculino")
+    
+    # Usar estructuras según género
+    if genero == "masculino":
+        equipos_dict = EQUIPOS_MASCULINO
+    else:
+        equipos_dict = EQUIPOS_FEMENINO
+    
     competicion = context.user_data.get("competicion")
     grupo = context.user_data.get("grupo")
-    equipos = EQUIPOS.get((competicion, grupo), [])
+    equipos = equipos_dict.get((competicion, grupo), [])
     context.user_data["equipos_list"] = equipos
     teclado = [[InlineKeyboardButton(text=e, callback_data=f"equipo::{i}")]
                for i, e in enumerate(equipos)]
@@ -2028,9 +2168,15 @@ def main():
             SOLICITAR_ACCESO_EQUIPO: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, handle_access_request)
             ],
+            ELEGIR_GENERO: [
+                CallbackQueryHandler(elegir_genero, pattern=r"^genero::"),
+                CallbackQueryHandler(restart, pattern=r"^restart$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, mensaje_no_permitido)
+            ],
             ELEGIR_COMPETICION: [
                 CallbackQueryHandler(elegir_competicion, pattern=r"^comp::"),
                 CallbackQueryHandler(locked_handler, pattern=r"^locked::"),  # Handler unificado
+                CallbackQueryHandler(back_genero, pattern=r"^back_genero$"),
                 CallbackQueryHandler(restart, pattern=r"^restart$"),
                 MessageHandler(filters.TEXT & ~filters.COMMAND, mensaje_no_permitido)
             ],
