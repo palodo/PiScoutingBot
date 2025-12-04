@@ -2903,6 +2903,10 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
         else:
             color_header = colors.HexColor("#4a5568")  # Gris igual que página de rankings (Ritmo)
         
+        # Determinar si necesitamos formato compacto
+        num_equipos_total = len(df_sorted)
+        usar_compacto = num_equipos_total > 14
+        
         # Añadir filas de equipos
         for i, (_, row) in enumerate(df_sorted.iterrows()):
             equipo_nombre = row['Equipo']
@@ -2925,18 +2929,30 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
                 # Otros equipos: solo el número en negrita
                 nombre_con_ranking = f"<b>{ranking_pos}.</b> {nombre_mostrar}"
             
-            # Estilos con color para el equipo seleccionado
+            # Estilos con color para el equipo seleccionado - AJUSTAR SEGÚN COMPACTO O NORMAL
             if es_nuestro:
                 color_texto = color_header
-                nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
-                                            alignment=0, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
-                valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
-                                        alignment=2, fontName='Helvetica', leading=11)  # Reducido de 13 a 11
+                if usar_compacto:
+                    nombre_style = ParagraphStyle('', fontSize=9, textColor=color_texto, 
+                                                alignment=0, fontName='Helvetica', leading=10)
+                    valor_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
+                                            alignment=2, fontName='Helvetica', leading=10)
+                else:
+                    nombre_style = ParagraphStyle('', fontSize=10, textColor=color_texto, 
+                                                alignment=0, fontName='Helvetica', leading=12)
+                    valor_style = ParagraphStyle('', fontSize=11, textColor=color_texto, 
+                                            alignment=2, fontName='Helvetica', leading=12)
             else:
-                nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
-                                            alignment=0, fontName='Helvetica', leading=12)  # Cambiado a Helvetica normal
-                valor_style = ParagraphStyle('', fontSize=10.5, textColor=colors.black, 
-                                        alignment=2, fontName='Helvetica', leading=12)  # Cambiado a Helvetica normal
+                if usar_compacto:
+                    nombre_style = ParagraphStyle('', fontSize=8.5, textColor=colors.black, 
+                                                alignment=0, fontName='Helvetica', leading=10)
+                    valor_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
+                                            alignment=2, fontName='Helvetica', leading=10)
+                else:
+                    nombre_style = ParagraphStyle('', fontSize=9.5, textColor=colors.black, 
+                                                alignment=0, fontName='Helvetica', leading=12)
+                    valor_style = ParagraphStyle('', fontSize=10.5, textColor=colors.black, 
+                                            alignment=2, fontName='Helvetica', leading=12)
             
             datos_ranking.append([
                 Paragraph(nombre_con_ranking, nombre_style),
@@ -2944,8 +2960,17 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             ])
         
         # Crear tabla con diseño mejorado - Más espacio para ranking
-        # 📏 COMPARATIVA: Altura automática con mejor espaciado interno
-        tabla = Table(datos_ranking, colWidths=[1.6*inch, 0.6*inch], rowHeights=None, splitByRow=True)
+        # 📏 COMPARATIVA: Ajustar altura según número de equipos
+        num_filas = len(datos_ranking)
+        num_equipos = num_filas - 1  # Restar 1 por el header
+        
+        # Si hay más de 14 equipos, usar filas compactas para evitar overflow
+        if num_equipos > 14:
+            row_heights = [30] + [16] * num_equipos  # Header alto, filas compactas
+        else:
+            row_heights = [30] + [20] * num_equipos  # Header alto, filas normales
+        
+        tabla = Table(datos_ranking, colWidths=[1.6*inch, 0.6*inch], rowHeights=row_heights, splitByRow=True)
         
         # Estilos con colores consistentes
         estilos = [
@@ -2957,19 +2982,31 @@ def generar_pdf_informe(equipo_data, df_jugadores_norm, df_principales, df_apoyo
             ('TOPPADDING', (0, 0), (-1, 0), 8),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
             
-            # Contenido
+            # Contenido - ajustar padding según si es compacto o normal
             ('ALIGN', (0, 1), (0, -1), 'LEFT'),
             ('ALIGN', (1, 1), (1, -1), 'RIGHT'),
             ('VALIGN', (0, 1), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 1), (-1, -1), 8),
-            ('RIGHTPADDING', (0, 1), (-1, -1), 8),
-            ('TOPPADDING', (0, 1), (-1, -1), 5),    # ✅ COMPARATIVA: Reducido de 8 a 5 para coincidir con Rankings
-            ('BOTTOMPADDING', (0, 1), (-1, -1), 5), # ✅ COMPARATIVA: Reducido de 8 a 5 para coincidir con Rankings
-            
+            ('LEFTPADDING', (0, 1), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 1), (-1, -1), 6),
+        ]
+        
+        # Añadir padding según formato
+        if num_equipos > 14:
+            estilos.extend([
+                ('TOPPADDING', (0, 1), (-1, -1), 2),    # Compacto
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
+            ])
+        else:
+            estilos.extend([
+                ('TOPPADDING', (0, 1), (-1, -1), 5),    # Normal
+                ('BOTTOMPADDING', (0, 1), (-1, -1), 5),
+            ])
+        
+        estilos.extend([
             # Bordes
             ('BOX', (0, 0), (-1, -1), 1, color_header),
             ('LINEBELOW', (0, 0), (-1, 0), 1, color_header),
-        ]
+        ])
         
         # Alternar colores de fondo para las filas y colores para equipo seleccionado
         for i, (_, row) in enumerate(df_sorted.iterrows(), 1):

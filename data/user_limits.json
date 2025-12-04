@@ -43,7 +43,7 @@
       "authorized": true,
       "admin": false,
       "max_generations": 3,
-      "remaining_generations": 2,
+      "remaining_generations": 1,
       "name": "PABLO"
     }
   }
